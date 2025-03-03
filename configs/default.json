@@ -1,0 +1,11 @@
+{
+    "experiment_name": "default",
+    "model": {
+      "name": "google/codegemma-2b",
+      "assistant_model": null
+    },
+    "prompt_strategy": {
+      "mode": "zero-shot"
+    },
+    "test_set_path": "test.json"
+}

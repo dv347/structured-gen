@@ -1,6 +1,6 @@
 __pycache__/
 
-configs/
+configs/*
 !configs/default.json
 
 data/
