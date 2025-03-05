@@ -1,7 +1,12 @@
 __pycache__/
 
 configs/*
-!configs/default.json
+!configs/evaluate/
+configs/evaluate/*
+!configs/evaluate/default.json
+!configs/train/
+configs/train/*
+!configs/train/default.json
 
 data/
 logs/

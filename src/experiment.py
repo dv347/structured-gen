@@ -23,10 +23,11 @@ class Experiment:
         self.prompting_strategy = prompting_strategy
         self.test_set_path = test_set_path
 
-    def from_config(config: ExperimentConfig) -> "Experiment":
+    @classmethod
+    def from_config(cls, config: ExperimentConfig) -> "Experiment":
         model = LargeLanguageModel.from_config(config.model_config)
         prompting_strategy = PromptingStrategy.from_config(config.prompt_config)
-        return Experiment(
+        return cls(
             experiment_name=config.experiment_name,
             model=model,
             prompting_strategy=prompting_strategy,
