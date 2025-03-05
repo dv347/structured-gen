@@ -56,7 +56,7 @@ class TrainingPipeline:
         model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             torch_dtype=torch.bfloat16,
-            device_map='auto'
+            device_map="auto"
         )
         tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         lora_model = get_peft_model(model, self.lora_config)
@@ -99,7 +99,6 @@ class TrainingPipeline:
 
             return {"accuracy": accuracy}
         
-        # Data collator
         def formatting_prompts_func(example) -> str:
             assert type(example['query']) == str
             assert type(example['program']) == str

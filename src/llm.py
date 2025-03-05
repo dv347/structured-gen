@@ -48,19 +48,19 @@ class LargeLanguageModel:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
-        self.device = "mps" if torch.backends.mps.is_available() else "cpu"
         self.model = AutoModelForCausalLM.from_pretrained(
             model_name,
             torch_dtype=torch.bfloat16,
             device_map='auto'
         )
         if assistant_model:
-            self.assistant_model = AutoModelForCausalLM.from_pretrained(assistant_model, torch_dtype=torch.bfloat16, device_map=self.device).to(self.device)
+            self.assistant_model = AutoModelForCausalLM.from_pretrained(assistant_model, torch_dtype=torch.bfloat16, device_map="auto")
         else:
             self.assistant_model = None
 
-    def from_config(config: ModelConfig) -> "LargeLanguageModel":
-        return LargeLanguageModel(config.name, config.assistant_model)
+    @classmethod
+    def from_config(cls, config: ModelConfig) -> "LargeLanguageModel":
+        return cls(config.name, config.assistant_model)
 
     # def batch_prompt(self, prompts: List[str]) -> List[str]:
     #     self.batch_size = 8 # TODO: Make this configurable
@@ -69,7 +69,7 @@ class LargeLanguageModel:
     #     output = []
 
     #     for batch in tqdm(batched_prompts, desc="Generating predictions", unit="batch"):
-    #         inputs = self.tokenizer(batch, return_tensors="pt", padding=True).to(self.device)
+    #         inputs = self.tokenizer(batch, return_tensors="pt", padding=True).to(self.model.device)
     #         input_lengths = [len(input_ids) for input_ids in inputs["input_ids"]]
 
     #         with torch.no_grad():
@@ -86,7 +86,7 @@ class LargeLanguageModel:
 
     def prompt(self, prompt: str) -> str:
         stopping_criteria = StoppingCriteriaList([StopOnDoubleNewline(self.tokenizer)])
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
         input_length = inputs["input_ids"].shape[1]
 
         generate_kwargs = {

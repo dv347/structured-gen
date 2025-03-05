@@ -13,6 +13,8 @@ def main():
     parser.add_argument("--config", type = str, required = True, help="Path to the config file.")
     args = parser.parse_args()
 
+    assert torch.cuda.is_available() or torch.mps.is_available(), "CUDA or MPS must be available."
+
     configs = load_configs(args.mode, args.config)
     for config in configs:
         if args.mode == "train":
@@ -20,7 +22,10 @@ def main():
         elif args.mode == "eval":
             Experiment.from_config(config).run()
 
-        torch.mps.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.mps.is_available():
+            torch.mps.empty_cache()
 
 
 if __name__ == "__main__":
