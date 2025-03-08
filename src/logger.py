@@ -5,7 +5,7 @@ import os
 from paths import LOGS_DIR
 
 
-def setup_logger(log_to_file=False):
+def setup_logger(log_to_file=True):
     logger = logging.getLogger("prototype")
     logger.setLevel(logging.INFO)
 

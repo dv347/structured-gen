@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Dict
 
 from datasets import load_dataset
@@ -51,8 +52,11 @@ class TrainingPipeline:
         return cls(**vars(config))
 
     def run(self) -> None:
+        start_time = time.time()
+        logger.info("Loading dataset.")
         dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
 
+        logger.info(f"Loading model {self.model_name}.")
         model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             torch_dtype=torch.bfloat16,
@@ -71,26 +75,19 @@ class TrainingPipeline:
             return masked_preds
 
         def compute_metrics(eval_pred: EvalPrediction) -> Dict[str, any]:
-            logger.info("===============================================================================================================\n")
-
             predictions = eval_pred.predictions
             label_ids = eval_pred.label_ids
 
             total_correct = 0
             total_samples = predictions.shape[0]
 
-            counter = 0
+            log_sample = True
             for i in range(total_samples):
                 valid_label_ids = label_ids[i][label_ids[i] >= 0]
                 valid_predicted_ids = predictions[i][predictions[i] >= 0]
 
                 predicted_text = tokenizer.decode(valid_predicted_ids, skip_special_tokens=True)
                 label_text = tokenizer.decode(valid_label_ids, skip_special_tokens=True)
-
-                if counter < 8:
-                    logger.info(f"y_pred: {predicted_text}")
-                    logger.info(f"y_true: {label_text}\n")
-                    counter += 1
 
                 if predicted_text.strip() == label_text.strip():
                     total_correct += 1
@@ -118,15 +115,16 @@ class TrainingPipeline:
             compute_metrics=compute_metrics
         )
 
-        results = trainer.evaluate()
-        logger.info(f"Results before training: {results}")
-
+        logger.info("Beginning training.")
         trainer.train()
 
-        results = trainer.evaluate()
-        logger.info(f"Results after training: {results}")
-
+        logger.info(f"Saving model to {self.output_dir}.")
         merged_model = lora_model.merge_and_unload()
         model_dir = os.path.join(self.output_dir, "merged_model")
         merged_model.save_pretrained(model_dir)
         tokenizer.save_pretrained(model_dir)
+
+        end_time = time.time()
+        time_taken_minutes = (end_time - start_time) / 60
+        time_taken_hours = time_taken_minutes / 60
+        logger.info(f"Time taken: {time_taken_minutes:.2f} minutes ({time_taken_hours:.2f} hours).")
