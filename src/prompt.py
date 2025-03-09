@@ -42,7 +42,7 @@ class ZeroShot(PromptingStrategy):
 class FewShot(PromptingStrategy):
     def __init__(self, exemplars_path: str):
         super().__init__()
-        self.exemplars = load_from_json(os.path.join(DATA_DIR, exemplars_path))
+        self.exemplars = load_from_json(exemplars_path)
 
     def construct_prompt(self, example: Case) -> str:
         new_exemplars = []

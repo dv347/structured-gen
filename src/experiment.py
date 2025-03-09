@@ -36,7 +36,7 @@ class Experiment:
 
     def run(self) -> None:
         start_time = time.time()
-        test_set = load_from_json(os.path.join(DATA_DIR, self.test_set_path))
+        test_set = load_from_json(self.test_set_path)
         predictions = []
         for case in tqdm(test_set, desc="Generating predictions", unit="case"):
             prompt = self.prompting_strategy.construct_prompt(case)

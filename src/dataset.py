@@ -1,7 +1,8 @@
 import json
 import os
-from typing import List, Tuple
+from typing import List
 
+from grammar import Grammar
 from paths import DATA_DIR
 
 
@@ -19,30 +20,8 @@ class TestCase(Case):
         self.prediction = prediction
 
 
-def load_examples(stem: str) -> List[Case]:  
-    source_path = stem + ".src"
-    target_path = stem + ".tgt"
-
-    with open(source_path, "r", encoding="utf-8") as src_file:
-        source_lines = src_file.readlines()
-    with open(target_path, "r", encoding="utf-8") as tgt_file:
-        target_lines = tgt_file.readlines()
-
-    assert len(source_lines) == len(target_lines)
-
-    examples = [Case(source=s.strip(), target=t.strip()) for s, t in zip(source_lines, target_lines)]
-    return examples
-
-
-def load_data() -> Tuple[List[Case], List[Case], List[Case]]:
-    train_examples = load_examples(os.path.join(DATA_DIR, "train"))
-    dev_examples = load_examples(os.path.join(DATA_DIR, "valid"))
-    test_examples = load_examples(os.path.join(DATA_DIR, "test"))
-
-    return train_examples, dev_examples, test_examples
-
-
 def load_from_json(file_path: str) -> List[Case]:
+    file_path = os.path.join(DATA_DIR, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)["data"]
 
@@ -50,16 +29,19 @@ def load_from_json(file_path: str) -> List[Case]:
 
 
 def generate_json(stem: str, output_file: str) -> None:
-    source_path = stem + ".src"
-    target_path = stem + ".tgt"
+    source_path = os.path.join(DATA_DIR, stem + ".src")
+    target_path = os.path.join(DATA_DIR, stem + ".tgt")
+    output_file = os.path.join(DATA_DIR, output_file)
+
+    grammar = Grammar("lispress_full_3.lark")
 
     data = []
     with open(source_path, "r", encoding="utf-8") as src, open(target_path, "r", encoding="utf-8") as tgt:
         for query, program in zip(src, tgt):
-            data.append({"query": query.strip(), "program": program.strip()})
+            data.append({"query": query.strip(), "minimal_grammar": grammar.generate_minimal_grammar(program.strip()), "program": program.strip()})
 
     with open(output_file, "w", encoding="utf-8") as out:
         json.dump({"data": data}, out, indent=4)
 
 
-# generate_json(os.path.join(DATA_DIR, "test"), os.path.join(DATA_DIR, "test.json"))
+# generate_json("test", "test.json")
