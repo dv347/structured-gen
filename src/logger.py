@@ -17,6 +17,7 @@ def setup_logger(log_to_file=True):
     logger.addHandler(console_handler)
 
     if log_to_file:
+        os.makedirs(LOGS_DIR, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         log_file = os.path.join(LOGS_DIR, f"{timestamp}.log")
         file_handler = logging.FileHandler(log_file)
