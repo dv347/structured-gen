@@ -65,16 +65,17 @@ class LoadableConfig(ABC):
     @classmethod
     @abstractmethod
     def from_dict(cls: Type[T], data: Dict[str, any]) -> T:
-        """Create an config instance from a dictionary."""
+        """Create a config instance from a dictionary."""
         raise NotImplementedError("Override me!")
 
 
 @dataclass
 class TrainingConfig(LoadableConfig):
+    pipeline_type: str
     model_name: str
+    output_dir: str
     train_path: str
     val_path: str
-    output_dir: str
     lora_args: LoraArgs
     training_args: TrainingArgs
     
@@ -84,10 +85,11 @@ class TrainingConfig(LoadableConfig):
         training_args = TrainingArgs(**data["training_args"])
 
         return cls(
+            pipeline_type=data["pipeline_type"],
             model_name=data["model_name"],
+            output_dir=data["output_dir"],
             train_path=data["train_path"],
             val_path=data["val_path"],
-            output_dir=data["output_dir"],
             lora_args=lora_args,
             training_args=training_args
         )

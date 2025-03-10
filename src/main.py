@@ -4,7 +4,7 @@ import torch
 
 from config import load_configs
 from experiment import Experiment
-from training_pipeline import TrainingPipeline
+from pipelines import TrainingPipeline
 
 
 def main():

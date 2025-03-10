@@ -13,9 +13,16 @@ from logger import logger
 from paths import DATA_DIR, MODELS_DIR
 
 
+FORMATTERS = {
+    "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
+    "bnf_generation": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:")
+}
+
+
 class TrainingPipeline:
     def __init__(
         self,
+        pipeline_type: str,
         model_name: str,
         train_path: str,
         val_path: str,
@@ -23,8 +30,10 @@ class TrainingPipeline:
         lora_args: LoraArgs,
         training_args: TrainingArgs
     ):
+        self.pipeline_type = pipeline_type
+        self.formatting_function, self.response_template = FORMATTERS[self.pipeline_type]
         self.model_name = model_name
-        self.output_dir = os.path.join(MODELS_DIR, output_dir)
+        self.output_dir = os.path.join(MODELS_DIR, f'{pipeline_type}/{output_dir}')
         self.lora_config = LoraConfig(
             r=lora_args.rank_dimension,  
             lora_alpha=lora_args.lora_alpha,
@@ -47,47 +56,55 @@ class TrainingPipeline:
         self.train_path = os.path.join(DATA_DIR, train_path)
         self.val_path = os.path.join(DATA_DIR, val_path)
 
+        self.dataset = None
+        self.model = None
+        self.tokenizer = None
+        self.lora_model = None
+
     @classmethod
     def from_config(cls, config: TrainingConfig) -> "TrainingPipeline":
         return cls(**vars(config))
-
-    def run(self) -> None:
-        start_time = time.time()
-        logger.info("Loading dataset.")
-        dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
-
-        logger.info(f"Loading model {self.model_name}.")
-        model = AutoModelForCausalLM.from_pretrained(
+    
+    def load_model(self) -> None:
+        self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             torch_dtype=torch.bfloat16,
             device_map="auto"
         )
-        tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        lora_model = get_peft_model(model, self.lora_config)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.lora_model = get_peft_model(self.model, self.lora_config)
 
-        def preprocess_logits_for_metrics(logits: torch.Tensor, labels: torch.Tensor):
-            """
-            Original Trainer may have a memory leak.
-            This is a workaround to avoid storing too many tensors that are not needed.
-            """
-            pred_ids = torch.argmax(logits, dim=-1)
-            masked_preds = torch.where(labels != -100, pred_ids, -100)
-            return masked_preds
+    def save_model(self) -> None:
+        merged_model = self.lora_model.merge_and_unload()
+        os.makedirs(model_dir, exist_ok=True)
+        model_dir = os.path.join(self.output_dir, "merged_model")
+        merged_model.save_pretrained(model_dir)
+        self.tokenizer.save_pretrained(model_dir)
 
-        def compute_metrics(eval_pred: EvalPrediction) -> Dict[str, any]:
+    @staticmethod
+    def preprocess_logits_for_metrics(logits: torch.Tensor, labels: torch.Tensor):
+        """
+        Original Trainer may have a memory leak.
+        This is a workaround to avoid storing too many tensors that are not needed.
+        """
+        pred_ids = torch.argmax(logits, dim=-1)
+        masked_preds = torch.where(labels != -100, pred_ids, -100)
+        return masked_preds
+    
+    def get_compute_accuracy_fn(self):
+        def compute_accuracy(eval_pred: EvalPrediction) -> Dict[str, any]:
             predictions = eval_pred.predictions
             label_ids = eval_pred.label_ids
 
             total_correct = 0
             total_samples = predictions.shape[0]
 
-            log_sample = True
             for i in range(total_samples):
                 valid_label_ids = label_ids[i][label_ids[i] >= 0]
                 valid_predicted_ids = predictions[i][predictions[i] >= 0]
 
-                predicted_text = tokenizer.decode(valid_predicted_ids, skip_special_tokens=True)
-                label_text = tokenizer.decode(valid_label_ids, skip_special_tokens=True)
+                predicted_text = self.tokenizer.decode(valid_predicted_ids, skip_special_tokens=True)
+                label_text = self.tokenizer.decode(valid_label_ids, skip_special_tokens=True)
 
                 if predicted_text.strip() == label_text.strip():
                     total_correct += 1
@@ -95,34 +112,35 @@ class TrainingPipeline:
             accuracy = total_correct / total_samples
 
             return {"accuracy": accuracy}
+        return compute_accuracy
+
+    def run(self) -> None:
+        start_time = time.time()
+        logger.info("Loading dataset.")
+        dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
+
+        logger.info(f"Loading model {self.model_name}.")
+        self.load_model()
         
-        def formatting_prompts_func(example) -> str:
-            assert type(example['query']) == str
-            assert type(example['program']) == str
-            return f"### Query: {example['query']}\n ### Program: {example['program']}"
-        response_template = " ### Program:"
-        collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)
+        collator = DataCollatorForCompletionOnlyLM(self.response_template, tokenizer=self.tokenizer)
 
         trainer = SFTTrainer(
-            lora_model,
+            self.lora_model,
             args=self.training_args,
             data_collator=collator,
             train_dataset=dataset['train'],
             eval_dataset=dataset['validation'],
             peft_config=self.lora_config,
-            formatting_func=formatting_prompts_func,
-            preprocess_logits_for_metrics=preprocess_logits_for_metrics,
-            compute_metrics=compute_metrics
+            formatting_func=self.formatting_function,
+            preprocess_logits_for_metrics=TrainingPipeline.preprocess_logits_for_metrics,
+            compute_metrics=self.get_compute_accuracy_fn()
         )
 
         logger.info("Beginning training.")
         trainer.train()
 
         logger.info(f"Saving model to {self.output_dir}.")
-        merged_model = lora_model.merge_and_unload()
-        model_dir = os.path.join(self.output_dir, "merged_model")
-        merged_model.save_pretrained(model_dir)
-        tokenizer.save_pretrained(model_dir)
+        self.save_model()
 
         end_time = time.time()
         time_taken_minutes = (end_time - start_time) / 60

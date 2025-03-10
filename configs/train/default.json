@@ -1,8 +1,9 @@
 {
+    "pipeline_type": "baseline",
     "model_name": "google/codegemma-2b",
+    "output_dir": "sft_output",
     "train_path": "train.json",
     "val_path": "valid_8.json",
-    "output_dir": "sft_output",
     "lora_args": {
         "rank_dimension": 16,
         "lora_alpha": 32,
