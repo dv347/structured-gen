@@ -1,11 +1,9 @@
-import os
 import time
 
 from tqdm import tqdm
 from config import ExperimentConfig
 from dataset import TestCase, load_from_json
 from llm import LargeLanguageModel
-from paths import DATA_DIR
 from prompt import PromptingStrategy
 from results import Results
 
@@ -36,12 +34,18 @@ class Experiment:
 
     def run(self) -> None:
         start_time = time.time()
-        test_set = load_from_json(self.test_set_path)
+        output_key = "minimal_grammar" if self.prompting_strategy.mode == "bnf_generation" else "program"
+        test_set = load_from_json(file_path=self.test_set_path, output_key=output_key)
         predictions = []
         for case in tqdm(test_set, desc="Generating predictions", unit="case"):
             prompt = self.prompting_strategy.construct_prompt(case)
             response = self.model.prompt(prompt)
-            result = TestCase(source=case.source, target=case.target, prompt=prompt, prediction=response)
+            result = TestCase(
+                source=case.source, 
+                target=case.target, 
+                prompt=prompt, 
+                prediction=response
+            )
             predictions.append(result)
         end_time = time.time()
         time_taken = end_time - start_time

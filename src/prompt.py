@@ -1,31 +1,36 @@
 from abc import ABC, abstractmethod
-import os
 from typing import List
 
 from config import FewShotConfig, PromptConfig, ZeroShotConfig
 from dataset import Case, load_from_json
 from logger import logger
-from paths import DATA_DIR
 
 
 class PromptingStrategy(ABC):
-    def __init__(self):
-        self.prompt_template = {
-            "instruction": ("You are an expert programmer, and you need to write a program" 
-                            " for the given natural language query.\n"),
-            "exemplar": lambda example: f"query: {example.source}\nprogram:\n{example.target}\n\n",
-            "prediction": lambda example: f"query: {example.source}\nprogram:\n",
+    PROMPT_TEMPLATE = {
+        "instruction": {
+            "baseline": ("You are an expert programmer, and you need to write a program"
+                        " for the given natural language query.\n"),
+            "bnf_generation": ("You are an expert programmer, and you need to write a minimally"
+                            "sufficient BNF grammar for the given natural language query.\n")
+        },
+        "exemplar": lambda example: f"Query: {example.source}\nProgram:\n{example.target}\n\n",
+        "prediction": {
+            "baseline": lambda example: f"Query: {example.source}\nProgram:\n",
+            "bnf_generation": lambda example: f"Query: {example.source}\nBNF Grammar:\n"
         }
+    }
 
     @staticmethod
     def from_config(config: PromptConfig) -> "PromptingStrategy":
-        if type(config) == ZeroShotConfig:
-            return ZeroShot()
-        elif type(config) == FewShotConfig:
-            return FewShot(config.exemplars_path)
-        else:
-            raise ValueError(f"Unsupported prompt config: {config}")
-
+        classes = {
+            ZeroShotConfig: ZeroShot,
+            FewShotConfig: FewShot
+        }
+        config_dict = vars(config)
+        config_dict.pop("strategy")
+        return classes[type(config)](**config_dict)
+    
     @abstractmethod
     def construct_prompt(self, example: Case) -> str:
         raise NotImplementedError("Override me!")
@@ -35,14 +40,19 @@ class PromptingStrategy(ABC):
     
 
 class ZeroShot(PromptingStrategy):
+    def __init__(self, mode: str):
+        self.mode = mode
+
     def construct_prompt(self, example: Case) -> str:
-        return self.prompt_template["instruction"] + self.prompt_template["prediction"](example)
+        return PromptingStrategy.PROMPT_TEMPLATE["instruction"][self.mode] + PromptingStrategy.PROMPT_TEMPLATE["prediction"][self.mode](example)
 
 
 class FewShot(PromptingStrategy):
-    def __init__(self, exemplars_path: str):
-        super().__init__()
-        self.exemplars = load_from_json(exemplars_path)
+    def __init__(self, k: int, exemplars_path: str):
+        exemplars = load_from_json(exemplars_path)
+        assert k <= len(exemplars), "Few-shot k should be less than or equal to the number of exemplars"
+        self.exemplars = exemplars[:k]
+        self.mode = "baseline"
 
     def construct_prompt(self, example: Case) -> str:
         new_exemplars = []
@@ -52,10 +62,10 @@ class FewShot(PromptingStrategy):
             else:
                 logger.info("Found duplicate example in exemplars")
         
-        prompt = self.prompt_template["instruction"]
+        prompt = PromptingStrategy.PROMPT_TEMPLATE["instruction"][self.mode]
 
         for exemplar in new_exemplars:
-            prompt += self.prompt_template["exemplar"](exemplar)
+            prompt += PromptingStrategy.PROMPT_TEMPLATE["exemplar"](exemplar)
 
-        prompt += self.prompt_template["prediction"](example)
+        prompt += PromptingStrategy.PROMPT_TEMPLATE["prediction"][self.mode](example)
         return prompt

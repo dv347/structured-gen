@@ -15,12 +15,12 @@ class ModelConfig:
 
 @dataclass
 class PromptConfig(ABC):
-    mode: str
+    strategy: str
 
 
 @dataclass
 class ZeroShotConfig(PromptConfig):
-    pass
+    mode: str
 
 
 @dataclass
@@ -110,7 +110,7 @@ class ExperimentConfig(LoadableConfig):
             "zero-shot": ZeroShotConfig,
             "few-shot": FewShotConfig
         }
-        prompt_class = data["prompt_strategy"]["mode"]
+        prompt_class = data["prompt_strategy"]["strategy"]
         prompt_config = prompt_classes[prompt_class](**data["prompt_strategy"])
 
         return cls(

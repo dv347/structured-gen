@@ -20,12 +20,13 @@ class TestCase(Case):
         self.prediction = prediction
 
 
-def load_from_json(file_path: str) -> List[Case]:
+def load_from_json(file_path: str, output_key: str) -> List[Case]:
+    assert output_key in ["program", "minimal_grammar"], f"Invalid output key: {output_key}"
     file_path = os.path.join(DATA_DIR, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)["data"]
 
-    return [Case(example["query"], example["program"]) for example in data]
+    return [Case(example["query"], example[output_key]) for example in data]
 
 
 def generate_json(stem: str, output_file: str) -> None:
