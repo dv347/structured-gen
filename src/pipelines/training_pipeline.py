@@ -13,13 +13,12 @@ from logger import logger
 from paths import DATA_DIR, MODELS_DIR
 
 
-FORMATTERS = {
-    "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
-    "bnf_generation": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:")
-}
-
-
 class TrainingPipeline:
+    FORMATTERS = {
+        "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
+        "bnf_generation": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:")
+    }
+    
     def __init__(
         self,
         pipeline_type: str,
@@ -31,7 +30,7 @@ class TrainingPipeline:
         training_args: TrainingArgs
     ):
         self.pipeline_type = pipeline_type
-        self.formatting_function, self.response_template = FORMATTERS[self.pipeline_type]
+        self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.pipeline_type]
         self.model_name = model_name
         self.output_dir = os.path.join(MODELS_DIR, f'{pipeline_type}/{output_dir}')
         self.lora_config = LoraConfig(
