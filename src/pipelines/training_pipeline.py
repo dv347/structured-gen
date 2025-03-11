@@ -8,7 +8,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, EvalPrediction
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
-from config import LoraArgs, TrainingArgs, TrainingConfig
+from config import LoraArgs, StageConfig, TrainingArgs, TrainingConfig
 from logger import logger
 from paths import DATA_DIR, MODELS_DIR
 
@@ -16,12 +16,13 @@ from paths import DATA_DIR, MODELS_DIR
 class TrainingPipeline:
     FORMATTERS = {
         "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
-        "bnf_generation": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:")
+        "induction": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:"),
+        "structured_reasoning": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}\n ### Program: {e['program']}", " ### Program:")
     }
     
     def __init__(
         self,
-        pipeline_type: str,
+        stage_config: StageConfig,
         model_name: str,
         train_path: str,
         val_path: str,
@@ -29,12 +30,12 @@ class TrainingPipeline:
         lora_args: LoraArgs,
         training_args: TrainingArgs
     ):
-        self.pipeline_type = pipeline_type
-        self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.pipeline_type]
+        self.stage = stage_config.name
+        self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
         self.model_name = model_name
-        self.output_dir = os.path.join(MODELS_DIR, f'{pipeline_type}/{output_dir}')
+        self.output_dir = os.path.join(MODELS_DIR, f'{self.stage}/{output_dir}')
         self.lora_config = LoraConfig(
-            r=lora_args.rank_dimension,  
+            r=lora_args.rank_dimension,
             lora_alpha=lora_args.lora_alpha,
             lora_dropout=lora_args.lora_dropout,
             bias=lora_args.bias,  

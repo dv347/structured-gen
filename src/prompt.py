@@ -11,13 +11,13 @@ class PromptingStrategy(ABC):
         "instruction": {
             "baseline": ("You are an expert programmer, and you need to write a program"
                         " for the given natural language query.\n"),
-            "bnf_generation": ("You are an expert programmer, and you need to write a minimally"
+            "induction": ("You are an expert programmer, and you need to write a minimally"
                             "sufficient BNF grammar for the given natural language query.\n")
         },
         "exemplar": lambda example: f"Query: {example.source}\nProgram:\n{example.target}\n\n",
         "prediction": {
             "baseline": lambda example: f"Query: {example.source}\nProgram:\n",
-            "bnf_generation": lambda example: f"Query: {example.source}\nBNF Grammar:\n"
+            "induction": lambda example: f"Query: {example.source}\nBNF Grammar:\n"
         }
     }
 

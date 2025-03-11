@@ -50,6 +50,27 @@ class TrainingArgs:
     eval_steps: int
 
 
+@dataclass
+class StageConfig(ABC):
+    name: str
+
+
+@dataclass
+class BaselineConfig(StageConfig):
+    pass
+
+
+@dataclass
+class InductionConfig(StageConfig):
+    grammar_variant: str
+
+
+@dataclass
+class StructuredReasoningConfig(StageConfig):
+    grammar_type: str
+    gt_ratio: float
+
+
 T = TypeVar("T", bound="LoadableConfig")
 
 
@@ -71,7 +92,7 @@ class LoadableConfig(ABC):
 
 @dataclass
 class TrainingConfig(LoadableConfig):
-    pipeline_type: str
+    stage_config: StageConfig
     model_name: str
     output_dir: str
     train_path: str
@@ -84,8 +105,16 @@ class TrainingConfig(LoadableConfig):
         lora_args = LoraArgs(**data["lora_args"])
         training_args = TrainingArgs(**data["training_args"])
 
+        stage_classes = {
+            "baseline": BaselineConfig,
+            "induction": InductionConfig,
+            "structured_reasoning": StructuredReasoningConfig
+        }
+        stage = data["stage"]["name"]
+        stage_config = stage_classes[stage](**data["stage"])
+
         return cls(
-            pipeline_type=data["pipeline_type"],
+            stage_config=stage_config,
             model_name=data["model_name"],
             output_dir=data["output_dir"],
             train_path=data["train_path"],

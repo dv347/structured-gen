@@ -34,7 +34,7 @@ class Experiment:
 
     def run(self) -> None:
         start_time = time.time()
-        output_key = "minimal_grammar" if self.prompting_strategy.mode == "bnf_generation" else "program"
+        output_key = "minimal_grammar" if self.prompting_strategy.mode == "induction" else "program"
         test_set = load_from_json(file_path=self.test_set_path, output_key=output_key)
         predictions = []
         for case in tqdm(test_set, desc="Generating predictions", unit="case"):
