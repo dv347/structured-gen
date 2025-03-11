@@ -3,14 +3,14 @@ import os
 from typing import List
 
 from dataset import TestCase
-from eval import evaluate_programs
+from eval import evaluate_accuracy
 from paths import RESULTS_DIR
 
 
 class Results:
     def __init__(self, experiment_name: str, cases: List[TestCase], time_taken: float):
         self.cases = cases
-        self.accuracy = evaluate_programs(cases)
+        self.accuracy = evaluate_accuracy(cases)
         self.time_taken = time_taken
         self.dir = os.path.join(RESULTS_DIR, experiment_name)
         os.makedirs(self.dir, exist_ok=True)
