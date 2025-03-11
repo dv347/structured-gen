@@ -75,8 +75,8 @@ class TrainingPipeline:
 
     def save_model(self) -> None:
         merged_model = self.lora_model.merge_and_unload()
-        os.makedirs(model_dir, exist_ok=True)
         model_dir = os.path.join(self.output_dir, "merged_model")
+        os.makedirs(model_dir, exist_ok=True)
         merged_model.save_pretrained(model_dir)
         self.tokenizer.save_pretrained(model_dir)
 
