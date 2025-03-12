@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Dict, List, Tuple
+from typing import Any, Dict
 
 from datasets import load_dataset
 from peft import get_peft_model, LoraConfig
@@ -103,7 +103,7 @@ class TrainingPipeline:
         return masked_preds
     
     def get_compute_accuracy_fn(self):
-        def compute_accuracy(eval_pred: EvalPrediction) -> Dict[str, any]:
+        def compute_accuracy(eval_pred: EvalPrediction) -> Dict[str, Any]:
             predictions = eval_pred.predictions
             label_ids = eval_pred.label_ids
 
