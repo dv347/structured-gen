@@ -27,6 +27,7 @@ class Results:
             for case in self.cases
         ]
         
+        os.makedirs(self.dir, exist_ok=True)
         with open(predictions_file, "w", encoding="utf-8") as f:
             json.dump(predictions_data, f, indent=4)
 
