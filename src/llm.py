@@ -41,15 +41,14 @@ class StopOnDoubleNewline(StoppingCriteria):
 class LargeLanguageModel:
     def __init__(
         self, 
-        name: str, 
+        path: str, 
         assistant_model: str | None
     ):
-        model_name = name
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True)
+        self.tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
+            path,
             torch_dtype=torch.bfloat16,
             device_map='auto'
         )
@@ -60,7 +59,7 @@ class LargeLanguageModel:
 
     @classmethod
     def from_config(cls, config: ModelConfig) -> "LargeLanguageModel":
-        return cls(config.name, config.assistant_model)
+        return cls(config.path, config.assistant_model)
 
     # def batch_prompt(self, prompts: List[str]) -> List[str]:
     #     self.batch_size = 8 # TODO: Make this configurable
