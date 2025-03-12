@@ -42,13 +42,13 @@ class GrammarLoader:
     
     def generate_cache(self, path: str) -> None:
         model = LargeLanguageModel(path=self.model_path, assistant_model=None)
-        prompt_strategy = ZeroShot(mode="induction")
+        prompt_strategy = ZeroShot(stage="induction")
         cache_data = {"data": []}
         cases = load_from_json(path)
         for case in tqdm(cases, desc="Generating cache", unit="case"):
             prompt = prompt_strategy.construct_prompt(case)
             response = model.prompt(prompt).strip()
-            cache_data["data"].append({"query": case.source, "grammar": response})
+            cache_data["data"].append({"query": case.query, "grammar": response})
 
         os.makedirs(self.cache_dir(path), exist_ok=True)
         cache_file = os.path.join(self.cache_dir(path), "cache.json")

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
 import os
-from typing import Dict, List, Type, TypeVar
+from typing import Any, Dict, List, Type, TypeVar
 
 from paths import EVAL_CONFIGS_DIR, TRAIN_CONFIGS_DIR
 
@@ -17,10 +17,19 @@ class ModelConfig:
 class PromptConfig(ABC):
     strategy: str
 
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> "PromptConfig":
+        classes = {
+            "zero-shot": ZeroShotConfig,
+            "few-shot": FewShotConfig
+        }
+        strategy = data["strategy"]
+        return classes[strategy](**data)
+
 
 @dataclass
 class ZeroShotConfig(PromptConfig):
-    mode: str
+    pass
 
 
 @dataclass
@@ -54,6 +63,16 @@ class TrainingArgs:
 class StageConfig(ABC):
     name: str
 
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> "StageConfig":
+        stage_classes = {
+            "baseline": BaselineConfig,
+            "induction": InductionConfig,
+            "structured_reasoning": StructuredReasoningConfig
+        }
+        stage = data["name"]
+        return stage_classes[stage](**data)
+
 
 @dataclass
 class BaselineConfig(StageConfig):
@@ -84,7 +103,7 @@ class LoadableConfig(ABC):
     
     @classmethod
     @abstractmethod
-    def from_dict(cls: Type[T], data: Dict[str, any]) -> T:
+    def from_dict(cls: Type[T], data: Dict[str, Any]) -> T:
         """Create a config instance from a dictionary."""
         raise NotImplementedError("Override me!")
 
@@ -100,17 +119,10 @@ class TrainingConfig(LoadableConfig):
     training_args: TrainingArgs
     
     @classmethod
-    def from_dict(cls, data: Dict[str, any]) -> "TrainingConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> "TrainingConfig":
+        stage_config = StageConfig.from_dict(data["stage"])
         lora_args = LoraArgs(**data["lora_args"])
         training_args = TrainingArgs(**data["training_args"])
-
-        stage_classes = {
-            "baseline": BaselineConfig,
-            "induction": InductionConfig,
-            "structured_reasoning": StructuredReasoningConfig
-        }
-        stage = data["stage"]["name"]
-        stage_config = stage_classes[stage](**data["stage"])
 
         return cls(
             stage_config=stage_config,
@@ -126,23 +138,20 @@ class TrainingConfig(LoadableConfig):
 @dataclass
 class ExperimentConfig(LoadableConfig):
     experiment_name: str
+    stage_config: StageConfig
     model_config: ModelConfig
     prompt_config: PromptConfig
     test_set_path: str
 
     @classmethod
-    def from_dict(cls, data: Dict[str, any]) -> "ExperimentConfig":
+    def from_dict(cls, data: Dict[str, Any]) -> "ExperimentConfig":
+        stage_config = StageConfig.from_dict(data["stage"])
         model_config = ModelConfig(**data["model"])
-
-        prompt_classes = {
-            "zero-shot": ZeroShotConfig,
-            "few-shot": FewShotConfig
-        }
-        prompt_class = data["prompt_strategy"]["strategy"]
-        prompt_config = prompt_classes[prompt_class](**data["prompt_strategy"])
+        prompt_config = PromptConfig.from_dict(data["prompt_strategy"])
 
         return cls(
             experiment_name=data["experiment_name"],
+            stage_config=stage_config,
             model_config=model_config,
             prompt_config=prompt_config,
             test_set_path=data["test_set_path"]

@@ -1,12 +1,14 @@
 {
     "experiment_name": "default",
+    "stage": {
+        "name": "baseline"
+    },
     "model": {
       "path": "google/codegemma-2b",
       "assistant_model": null
     },
     "prompt_strategy": {
-      "strategy": "zero-shot",
-      "mode": "baseline"
+      "strategy": "zero-shot"
     },
     "test_set_path": "test.json"
 }
