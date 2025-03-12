@@ -1,9 +1,13 @@
+import os
 from typing import List
 from tqdm import tqdm
+
+from huggingface_hub import model_info
 from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, LogitsProcessorList, PreTrainedTokenizerBase, StoppingCriteria, StoppingCriteriaList
 import torch
 
 from config import ModelConfig
+from paths import MODELS_DIR
 
 
 class StopOnDoubleNewline(StoppingCriteria):
@@ -44,11 +48,12 @@ class LargeLanguageModel:
         path: str, 
         assistant_model: str | None
     ):
-        self.tokenizer = AutoTokenizer.from_pretrained(path, use_fast=True)
+        resolved_path = LargeLanguageModel.resolve_model_path(path)
+        self.tokenizer = AutoTokenizer.from_pretrained(resolved_path, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
         self.tokenizer.padding_side = "left"
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
+            resolved_path,
             torch_dtype=torch.bfloat16,
             device_map='auto'
         )
@@ -56,6 +61,15 @@ class LargeLanguageModel:
             self.assistant_model = AutoModelForCausalLM.from_pretrained(assistant_model, torch_dtype=torch.bfloat16, device_map="auto")
         else:
             self.assistant_model = None
+
+    @staticmethod
+    def resolve_model_path(path: str) -> str:
+        """Check if the model is on Hugging Face. If not, assume it's a local fine-tuned model."""
+        try:
+            model_info(path)
+            return path
+        except Exception:
+            return os.path.join(MODELS_DIR, path)
 
     @classmethod
     def from_config(cls, config: ModelConfig) -> "LargeLanguageModel":
