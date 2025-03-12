@@ -6,10 +6,14 @@ from lark import Lark, Token, Tree
 from paths import GRAMMARS_DIR
 
 
-class Grammar:
-    def __init__(self, path: str):
+class GrammarGenerator:
+    def __init__(self, path: str, variant: str):
         grammar_file = os.path.join(GRAMMARS_DIR, path)
         self.parser = Lark.open(grammar_file, start="call", parser="earley")
+        fn_map = {
+            "minimal_grammar": self.generate_minimal_grammar
+        }
+        self.generate_fn = fn_map[variant]
 
     @staticmethod
     def merge_quoted_strings(lst: List[str]) -> List[str]:
@@ -57,7 +61,7 @@ class Grammar:
                     else:
                         raise ValueError(f"Unexpected type: {type(child)}")
 
-                child_values = Grammar.merge_quoted_strings(child_values)
+                child_values = GrammarGenerator.merge_quoted_strings(child_values)
                 concatenated_value = " ".join(child_values)
                 rule_dict[rule_name].add(concatenated_value)
 
@@ -65,4 +69,7 @@ class Grammar:
                     traverse(child)
 
         traverse(tree)
-        return Grammar.convert_to_bnf(rule_dict)
+        return GrammarGenerator.convert_to_bnf(rule_dict)
+    
+    def generate(self, program: str) -> str:
+        return self.generate_fn(program)

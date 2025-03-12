@@ -2,7 +2,7 @@ import json
 import os
 from typing import List
 
-from grammar import Grammar
+from grammar_generator import GrammarGenerator
 from paths import DATA_DIR
 
 
@@ -20,7 +20,7 @@ class TestCase(Case):
         self.prediction = prediction
 
 
-def load_from_json(file_path: str, output_key: str) -> List[Case]:
+def load_from_json(file_path: str, output_key: str = "program") -> List[Case]:
     assert output_key in ["program", "minimal_grammar"], f"Invalid output key: {output_key}"
     file_path = os.path.join(DATA_DIR, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
@@ -34,7 +34,7 @@ def generate_json(stem: str, output_file: str) -> None:
     target_path = os.path.join(DATA_DIR, stem + ".tgt")
     output_file = os.path.join(DATA_DIR, output_file)
 
-    grammar = Grammar("lispress_full_3.lark")
+    grammar = GrammarGenerator("lispress_full_3.lark")
 
     data = []
     with open(source_path, "r", encoding="utf-8") as src, open(target_path, "r", encoding="utf-8") as tgt:

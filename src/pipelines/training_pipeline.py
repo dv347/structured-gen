@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from datasets import load_dataset
 from peft import get_peft_model, LoraConfig
@@ -9,6 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, EvalPrediction
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
 from config import LoraArgs, StageConfig, TrainingArgs, TrainingConfig
+from grammar_loader import GrammarLoader
 from logger import logger
 from paths import DATA_DIR, MODELS_DIR
 
@@ -16,8 +17,8 @@ from paths import DATA_DIR, MODELS_DIR
 class TrainingPipeline:
     FORMATTERS = {
         "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
-        "induction": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}", " ### BNF Grammar:"),
-        "structured_reasoning": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['minimal_grammar']}\n ### Program: {e['program']}", " ### Program:")
+        "induction": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}", " ### BNF Grammar:"),
+        "structured_reasoning": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### Program:")
     }
     
     def __init__(
@@ -31,6 +32,7 @@ class TrainingPipeline:
         training_args: TrainingArgs
     ):
         self.stage = stage_config.name
+        self.stage_config = stage_config
         self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
         self.model_name = model_name
         self.output_dir = os.path.join(MODELS_DIR, f'{self.stage}/{output_dir}')
@@ -64,6 +66,15 @@ class TrainingPipeline:
     @classmethod
     def from_config(cls, config: TrainingConfig) -> "TrainingPipeline":
         return cls(**vars(config))
+    
+    def load_dataset(self) -> None:
+        self.dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
+        if self.stage in ["induction", "structured_reasoning"]:
+            loader = GrammarLoader(grammar_source=self.stage_config.grammar_source)
+            grammars_train = loader.load_grammars(self.train_path)
+            grammars_val = loader.load_grammars(self.val_path)
+            self.dataset["train"] = self.dataset["train"].add_column("grammar", grammars_train)
+            self.dataset["validation"] = self.dataset["validation"].add_column("grammar", grammars_val)
     
     def load_model(self) -> None:
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -117,7 +128,7 @@ class TrainingPipeline:
     def run(self) -> None:
         start_time = time.time()
         logger.info("Loading dataset.")
-        dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
+        self.load_dataset()
 
         logger.info(f"Loading model {self.model_name}.")
         self.load_model()
@@ -128,8 +139,8 @@ class TrainingPipeline:
             self.lora_model,
             args=self.training_args,
             data_collator=collator,
-            train_dataset=dataset['train'],
-            eval_dataset=dataset['validation'],
+            train_dataset=self.dataset['train'],
+            eval_dataset=self.dataset['validation'],
             peft_config=self.lora_config,
             formatting_func=self.formatting_function,
             preprocess_logits_for_metrics=TrainingPipeline.preprocess_logits_for_metrics,

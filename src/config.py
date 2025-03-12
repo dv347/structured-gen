@@ -9,7 +9,7 @@ from paths import EVAL_CONFIGS_DIR, TRAIN_CONFIGS_DIR
 
 @dataclass
 class ModelConfig:
-    name: str
+    path: str
     assistant_model: str
 
 
@@ -62,13 +62,12 @@ class BaselineConfig(StageConfig):
 
 @dataclass
 class InductionConfig(StageConfig):
-    grammar_variant: str
+    grammar_source: str
 
 
 @dataclass
 class StructuredReasoningConfig(StageConfig):
-    grammar_type: str
-    gt_ratio: float
+    grammar_source: str | dict
 
 
 T = TypeVar("T", bound="LoadableConfig")
