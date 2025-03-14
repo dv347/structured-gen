@@ -1,8 +1,10 @@
+import json
 import os
 import time
 from typing import Any, Dict
 
 from datasets import load_dataset
+import matplotlib.pyplot as plt
 from peft import get_peft_model, LoraConfig
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, EvalPrediction
@@ -124,6 +126,52 @@ class TrainingPipeline:
 
             return {"accuracy": accuracy}
         return compute_accuracy
+    
+    def get_loss_history(self) -> Dict[str, list]:
+        training_steps = []
+        training_loss = []
+        validation_steps = []
+        validation_loss = []
+
+        for log in self.trainer.state.log_history:
+            if "loss" in log:  # Training loss
+                training_steps.append(log["step"])
+                training_loss.append(log["loss"])
+            if "eval_loss" in log:  # Validation loss
+                validation_steps.append(log["step"])
+                validation_loss.append(log["eval_loss"])
+
+        return {
+            "training_steps": training_steps,
+            "training_loss": training_loss,
+            "validation_steps": validation_steps,
+            "validation_loss": validation_loss
+        }
+    
+    def save_loss_history(self, loss_data: Dict[str, list]) -> None:
+        loss_file = os.path.join(self.output_dir, "loss_history.json")
+
+        with open(loss_file, "w", encoding="utf-8") as f:
+            json.dump(loss_data, f, indent=4)
+
+    def plot_loss_history(self, loss_data: dict) -> None:
+        training_steps = loss_data.get("training_steps", [])
+        training_loss = loss_data.get("training_loss", [])
+        validation_steps = loss_data.get("validation_steps", [])
+        validation_loss = loss_data.get("validation_loss", [])
+
+        plt.figure(figsize=(10, 6))
+        plt.plot(training_steps, training_loss, label="Training Loss", linestyle="-", marker="o")
+        plt.plot(validation_steps, validation_loss, label="Validation Loss", linestyle="--", marker="s")
+
+        plt.xlabel("Training Steps")
+        plt.ylabel("Loss")
+        plt.title("Training & Validation Loss")
+        plt.legend()
+
+        plot_path = os.path.join(self.output_dir, "loss_plot.png")
+        plt.savefig(plot_path)
+        plt.close()
 
     def run(self) -> None:
         start_time = time.time()
@@ -135,7 +183,7 @@ class TrainingPipeline:
         
         collator = DataCollatorForCompletionOnlyLM(self.response_template, tokenizer=self.tokenizer)
 
-        trainer = SFTTrainer(
+        self.trainer = SFTTrainer(
             self.lora_model,
             args=self.training_args,
             data_collator=collator,
@@ -148,7 +196,12 @@ class TrainingPipeline:
         )
 
         logger.info("Beginning training.")
-        trainer.train()
+        self.trainer.train()
+
+        logger.info("Saving loss history.")
+        loss_history = self.get_loss_history()
+        self.save_loss_history(loss_history)
+        self.plot_loss_history(loss_history)
 
         logger.info(f"Saving model to {self.output_dir}.")
         self.save_model()
