@@ -26,7 +26,7 @@ class GrammarLoader:
 
     def load_grammar(self, case: Case) -> str:
         assert self.variant != "llm"
-        return self.generator.generate(case.target)
+        return self.generator.generate(case.program)
 
     def load_grammars(self, path: str) -> List[str]:
         if self.model_path and not self.cache_exists(path):
