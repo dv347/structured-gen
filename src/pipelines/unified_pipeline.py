@@ -33,7 +33,7 @@ class UnifiedPipeline:
         if stage_config.grammar_source["use_llm"]:
             struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source={"llm": model_path})
         else:
-            struct_config = InductionConfig(grammar_source=initial_grammar)
+            struct_config = InductionConfig("induction", grammar_source=initial_grammar)
         stage_two_config = TrainingConfig(
             stage_config=struct_config,
             model_path=model_path,
