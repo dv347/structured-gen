@@ -2,10 +2,12 @@
     "stage": {
         "name": "baseline"
     },
-    "model_name": "google/codegemma-2b",
+    "model_path": "google/codegemma-2b",
     "output_dir": "sft_output",
-    "train_path": "train.json",
-    "val_path": "valid_8.json",
+    "dataset": {
+        "train_path": "train.json",
+        "val_path": "valid_8.json"
+    },
     "lora_args": {
         "rank_dimension": 16,
         "lora_alpha": 32,

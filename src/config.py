@@ -39,6 +39,12 @@ class FewShotConfig(PromptConfig):
 
 
 @dataclass
+class DatasetPaths:
+    train_path: str
+    val_path: str
+
+
+@dataclass
 class LoraArgs:
     rank_dimension: int # Rank dimension - typically between 4-32
     lora_alpha: int # LoRA scaling factor - typically 2x rank
@@ -68,7 +74,8 @@ class StageConfig(ABC):
         stage_classes = {
             "baseline": BaselineConfig,
             "induction": InductionConfig,
-            "structured_reasoning": StructuredReasoningConfig
+            "structured_reasoning": StructuredReasoningConfig,
+            "unified": UnifiedConfig
         }
         stage = data["name"]
         return stage_classes[stage](**data)
@@ -87,6 +94,11 @@ class InductionConfig(StageConfig):
 @dataclass
 class StructuredReasoningConfig(StageConfig):
     grammar_source: str | dict
+
+
+@dataclass
+class UnifiedConfig(StageConfig):
+    grammar_source: dict
 
 
 T = TypeVar("T", bound="LoadableConfig")
@@ -111,27 +123,61 @@ class LoadableConfig(ABC):
 @dataclass
 class TrainingConfig(LoadableConfig):
     stage_config: StageConfig
-    model_name: str
+    model_path: str
     output_dir: str
-    train_path: str
-    val_path: str
+    dataset_paths: DatasetPaths
     lora_args: LoraArgs
     training_args: TrainingArgs
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TrainingConfig":
         stage_config = StageConfig.from_dict(data["stage"])
+        dataset_paths = DatasetPaths(**data["dataset"])
         lora_args = LoraArgs(**data["lora_args"])
         training_args = TrainingArgs(**data["training_args"])
 
         return cls(
             stage_config=stage_config,
-            model_name=data["model_name"],
+            model_path=data["model_path"],
             output_dir=data["output_dir"],
-            train_path=data["train_path"],
-            val_path=data["val_path"],
+            dataset_paths=dataset_paths,
             lora_args=lora_args,
             training_args=training_args
+        )
+
+
+@dataclass
+class TwoStageConfig(LoadableConfig):
+    stage_config: UnifiedConfig
+    model_path: str
+    output_dir: str
+    stage_one_dataset: DatasetPaths
+    stage_two_dataset: DatasetPaths
+    stage_one_lora: LoraArgs
+    stage_two_lora: LoraArgs
+    stage_one_training: TrainingArgs
+    stage_two_training: TrainingArgs
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TwoStageConfig":
+        stage_config = StageConfig.from_dict(data["stage"])
+        stage_one_dataset = DatasetPaths(**data["stage_one"]["dataset"])
+        stage_two_dataset = DatasetPaths(**data["stage_two"]["dataset"])
+        stage_one_lora = LoraArgs(**data["stage_one"]["lora_args"])
+        stage_two_lora = LoraArgs(**data["stage_two"]["lora_args"])
+        stage_one_training = TrainingArgs(**data["stage_one"]["training_args"])
+        stage_two_training = TrainingArgs(**data["stage_two"]["training_args"])
+
+        return cls(
+            stage_config=stage_config,
+            model_path=data["model_path"],
+            output_dir=data["output_dir"],
+            stage_one_dataset=stage_one_dataset,
+            stage_two_dataset=stage_two_dataset,
+            stage_one_lora=stage_one_lora,
+            stage_two_lora=stage_two_lora,
+            stage_one_training=stage_one_training,
+            stage_two_training=stage_two_training
         )
 
 
@@ -161,11 +207,6 @@ class ExperimentConfig(LoadableConfig):
 def load_configs(mode: str, path: str) -> List[LoadableConfig]:
     assert mode in ["train", "eval"], f"Invalid mode: {mode}"
 
-    mode_classes: Dict[str, LoadableConfig] = {
-        "train": TrainingConfig,
-        "eval": ExperimentConfig
-    }
-
     path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
 
     if os.path.isdir(path):
@@ -173,9 +214,16 @@ def load_configs(mode: str, path: str) -> List[LoadableConfig]:
     elif os.path.isfile(path):
         config_paths = [path]
     else:
-        raise ValueError(f"Invalid path: {path} does not exist.")
+        raise FileNotFoundError(f"Invalid path: {path} does not exist.")
 
     configs = []
     for config_path in config_paths:
-        configs.append(mode_classes[mode].from_file(config_path))
+        with open(config_path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+        if mode == "train":
+            stage_type = data["stage"]["name"]
+            config_class = TwoStageConfig if stage_type == "unified" else TrainingConfig
+            configs.append(config_class.from_dict(data))
+        elif mode == "eval":
+            configs.append(ExperimentConfig.from_dict(data))
     return configs

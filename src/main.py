@@ -2,9 +2,10 @@ import argparse
 
 import torch
 
-from config import load_configs
+from config import TwoStageConfig, load_configs
 from experiment import Experiment
 from pipelines import TrainingPipeline
+from pipelines.unified_pipeline import UnifiedPipeline
 
 
 def main():
@@ -18,7 +19,7 @@ def main():
     configs = load_configs(args.mode, args.config)
     for config in configs:
         if args.mode == "train":
-            TrainingPipeline.from_config(config).run()
+            UnifiedPipeline.from_config(config).run() if isinstance(config, TwoStageConfig) else TrainingPipeline.from_config(config).run()
         elif args.mode == "eval":
             Experiment.from_config(config).run()
 

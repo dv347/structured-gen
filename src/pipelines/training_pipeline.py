@@ -10,8 +10,9 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, EvalPrediction
 from trl import SFTConfig, SFTTrainer, DataCollatorForCompletionOnlyLM
 
-from config import LoraArgs, StageConfig, TrainingArgs, TrainingConfig
+from config import DatasetPaths, LoraArgs, StageConfig, TrainingArgs, TrainingConfig
 from grammar_loader import GrammarLoader
+from llm import LargeLanguageModel
 from logger import logger
 from paths import DATA_DIR, MODELS_DIR
 
@@ -26,9 +27,8 @@ class TrainingPipeline:
     def __init__(
         self,
         stage_config: StageConfig,
-        model_name: str,
-        train_path: str,
-        val_path: str,
+        model_path: str,
+        dataset_paths: DatasetPaths,
         output_dir: str,
         lora_args: LoraArgs,
         training_args: TrainingArgs
@@ -36,8 +36,8 @@ class TrainingPipeline:
         self.stage = stage_config.name
         self.stage_config = stage_config
         self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
-        self.model_name = model_name
-        self.output_dir = os.path.join(MODELS_DIR, f'{self.stage}/{output_dir}')
+        self.model_path = LargeLanguageModel.resolve_model_path(model_path)
+        self.output_dir = os.path.join(MODELS_DIR, f'{output_dir}')
         self.lora_config = LoraConfig(
             r=lora_args.rank_dimension,
             lora_alpha=lora_args.lora_alpha,
@@ -57,8 +57,8 @@ class TrainingPipeline:
             save_steps=training_args.save_steps,
             eval_steps=training_args.eval_steps
         )
-        self.train_path = os.path.join(DATA_DIR, train_path)
-        self.val_path = os.path.join(DATA_DIR, val_path)
+        self.train_path = os.path.join(DATA_DIR, dataset_paths.train_path)
+        self.val_path = os.path.join(DATA_DIR, dataset_paths.val_path)
 
         self.dataset = None
         self.model = None
@@ -80,11 +80,11 @@ class TrainingPipeline:
     
     def load_model(self) -> None:
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
+            self.model_path,
             torch_dtype=torch.bfloat16,
             device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.lora_model = get_peft_model(self.model, self.lora_config)
 
     def save_model(self) -> None:
@@ -178,7 +178,7 @@ class TrainingPipeline:
         logger.info("Loading dataset.")
         self.load_dataset()
 
-        logger.info(f"Loading model {self.model_name}.")
+        logger.info(f"Loading model {self.model_path}.")
         self.load_model()
         
         collator = DataCollatorForCompletionOnlyLM(self.response_template, tokenizer=self.tokenizer)
