@@ -11,7 +11,7 @@ class GrammarGenerator:
         grammar_file = os.path.join(GRAMMARS_DIR, path)
         self.parser = Lark.open(grammar_file, start="call", parser="earley")
         fn_map = {
-            "minimal_grammar": self.generate_minimal_grammar
+            "minimal": self.generate_minimal_grammar
         }
         self.generate_fn = fn_map[variant]
 
