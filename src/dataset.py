@@ -2,7 +2,6 @@ import json
 import os
 from typing import List
 
-from grammar_generator import GrammarGenerator
 from paths import DATA_DIR
 
 
