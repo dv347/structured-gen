@@ -44,26 +44,16 @@ class Experiment:
         for case, grammar in zip(cases, grammars):
             case.grammar = grammar
         return cases
-
+    
     def run(self) -> None:
         start_time = time.time()
         test_set = load_from_json(file_path=self.test_set_path)
         if self.stage in ["induction", "structured_reasoning"]:
             test_set = self.add_grammars(test_set)
-        predictions = []
-        for case in tqdm(test_set, desc="Generating predictions", unit="case"):
-            prompt = self.prompting_strategy.construct_prompt(case)
-            response = self.model.prompt(prompt)
-            target = case.grammar if self.stage == "induction" else case.program
-            result = TestCase(
-                source=case.query, 
-                target=target, 
-                prompt=prompt, 
-                prediction=response
-            )
-            predictions.append(result)
+        prompts = self.prompting_strategy.construct_prompts(test_set)
+        predictions = self.model.prompt(prompts)
+        test_cases = [TestCase(source=case.query, target=case.program, prompt=prompt, prediction=prediction) for case, prompt, prediction in zip(test_set, prompts, predictions)]
         end_time = time.time()
         time_taken = end_time - start_time
-        results = Results(self.experiment_name, predictions, time_taken)
+        results = Results(self.experiment_name, test_cases, time_taken)
         results.save()
-        

@@ -5,6 +5,7 @@
     },
     "model": {
       "path": "google/codegemma-2b",
+      "batch_size": 32,
       "assistant_model": null
     },
     "prompt_strategy": {

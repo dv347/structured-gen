@@ -10,7 +10,8 @@ from paths import EVAL_CONFIGS_DIR, TRAIN_CONFIGS_DIR
 @dataclass
 class ModelConfig:
     path: str
-    assistant_model: str
+    batch_size: int
+    assistant_model: str | None = None # Batch inference does not support assistant models
 
 
 @dataclass
@@ -93,7 +94,11 @@ class InductionConfig(StageConfig):
 
 @dataclass
 class StructuredReasoningConfig(StageConfig):
-    grammar_source: str | dict
+    grammar_source: str | ModelConfig
+
+    def __post_init__(self):
+        if isinstance(self.grammar_source, dict):
+            self.grammar_source = ModelConfig(**self.grammar_source)
 
 
 @dataclass

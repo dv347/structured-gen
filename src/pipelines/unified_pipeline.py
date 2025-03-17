@@ -1,5 +1,7 @@
 import os
-from config import DatasetPaths, InductionConfig, LoraArgs, StructuredReasoningConfig, TrainingArgs, TrainingConfig, TwoStageConfig, UnifiedConfig
+
+import torch
+from config import DatasetPaths, InductionConfig, LoraArgs, ModelConfig, StructuredReasoningConfig, TrainingArgs, TrainingConfig, TwoStageConfig, UnifiedConfig
 from logger import logger
 from pipelines import TrainingPipeline
 
@@ -20,7 +22,7 @@ class UnifiedPipeline:
         initial_grammar = stage_config.grammar_source["variant"]
         induction_config = InductionConfig("induction", grammar_source=initial_grammar)
         induction_dir = os.path.join(output_dir, "induction_checkpoint")
-        stage_one_config = TrainingConfig(
+        self.stage_one_config = TrainingConfig(
             stage_config=induction_config,
             model_path=model_path,
             output_dir=induction_dir,
@@ -31,10 +33,10 @@ class UnifiedPipeline:
 
         model_path = os.path.join(induction_dir, "merged_model")
         if stage_config.grammar_source["use_llm"]:
-            struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source={"llm": model_path})
+            struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source=ModelConfig(path=model_path, batch_size=2, assistant_model=None))
         else:
-            struct_config = InductionConfig("induction", grammar_source=initial_grammar)
-        stage_two_config = TrainingConfig(
+            struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source=initial_grammar)
+        self.stage_two_config = TrainingConfig(
             stage_config=struct_config,
             model_path=model_path,
             output_dir=output_dir,
@@ -42,8 +44,12 @@ class UnifiedPipeline:
             lora_args=stage_two_lora,
             training_args=stage_two_training
         )
-        self.stage_one = TrainingPipeline.from_config(stage_one_config)
-        self.stage_two = TrainingPipeline.from_config(stage_two_config)
+
+    @staticmethod
+    def run_stage(config: TrainingConfig):
+        pipeline = TrainingPipeline.from_config(config)
+        pipeline.run()
+
 
     @classmethod
     def from_config(cls, config: TwoStageConfig) -> "UnifiedPipeline":
@@ -51,6 +57,11 @@ class UnifiedPipeline:
 
     def run(self) -> None:
         logger.info("Running induction stage.")
-        self.stage_one.run()
+        UnifiedPipeline.run_stage(self.stage_one_config)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.mps.is_available():
+            torch.mps.empty_cache()
+
         logger.info("Running structured reasoning stage.")
-        self.stage_two.run()
+        UnifiedPipeline.run_stage(self.stage_two_config)
