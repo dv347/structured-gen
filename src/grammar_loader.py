@@ -20,7 +20,7 @@ class GrammarLoader:
             self.model_config = grammar_source
         else:
             self.variant = grammar_source
-            self.generator = GrammarGenerator(path="lispress_full_3.lark", variant=self.variant)
+            self.generator = GrammarGenerator.create(path="lispress_full_3.lark", variant=self.variant)
 
     def load_grammar(self, program: str) -> str:
         assert self.variant != "llm"

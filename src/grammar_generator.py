@@ -1,19 +1,24 @@
+from abc import ABC, abstractmethod
 from collections import defaultdict
 import os
 from typing import Dict, List, Set
 
-from lark import Lark, Token, Tree
+from lark import Lark, ParseTree, Token, Tree
 from paths import GRAMMARS_DIR
 
 
-class GrammarGenerator:
-    def __init__(self, path: str, variant: str):
+class GrammarGenerator(ABC):
+    def __init__(self, path: str):
         grammar_file = os.path.join(GRAMMARS_DIR, path)
         self.parser = Lark.open(grammar_file, start="call", parser="earley")
-        fn_map = {
-            "minimal": self.generate_minimal_grammar
+
+    @staticmethod
+    def create(path: str, variant: str) -> "GrammarGenerator":
+        class_map = {
+            "minimal": Minimal,
+            "semi-minimal": SemiMinimal
         }
-        self.generate_fn = fn_map[variant]
+        return class_map[variant](path)
 
     @staticmethod
     def merge_quoted_strings(lst: List[str]) -> List[str]:
@@ -43,10 +48,19 @@ class GrammarGenerator:
             bnf_lines.append(bnf_line)
         
         return "\n".join(bnf_lines)
-
-    def generate_minimal_grammar(self, program: str) -> str:
+    
+    @abstractmethod
+    def _generate(self, tree: ParseTree) -> Dict[str, Set[str]]:
+        raise NotImplementedError("Override me!")
+    
+    def generate(self, program: str) -> str:
         tree = self.parser.parse(program)
-        
+        rule_dict = self._generate(tree)
+        return GrammarGenerator.convert_to_bnf(rule_dict)
+    
+
+class Minimal(GrammarGenerator):
+    def _generate(self, tree: ParseTree) -> Dict[str, Set[str]]:
         rule_dict = defaultdict(set)
 
         def traverse(node):
@@ -69,7 +83,46 @@ class GrammarGenerator:
                     traverse(child)
 
         traverse(tree)
-        return GrammarGenerator.convert_to_bnf(rule_dict)
-    
-    def generate(self, program: str) -> str:
-        return self.generate_fn(program)
+        return rule_dict
+
+
+class SemiMinimal(GrammarGenerator):
+    def expansion_to_string(self, expansion: Tree) -> str:
+        productions = []
+        for value in expansion.children:
+            value = value.children[0]
+            if isinstance(value, Tree):
+                value = value.children[0]
+
+            if isinstance(value, Token):
+                productions.append(f"{value.value}")
+            else:
+                productions.append(value.name)
+        return " ".join(productions)
+
+    def _generate(self, tree: ParseTree) -> Dict[str, Set[str]]:
+        used_rules = []
+        def traverse(node):
+            if isinstance(node, Tree):
+                rule_name = node.data.value
+                used_rules.append(rule_name)
+
+                for child in node.children:
+                    traverse(child)
+        
+        traverse(tree)
+
+        used_rules = list(dict.fromkeys(used_rules))
+        rule_dict = {}
+
+        for rule in self.parser.grammar.rule_defs:
+            rule_name = rule[0].value
+            expansions = rule[2]
+
+            rule_variants = []
+            for expansion in expansions.children:
+                rule_variants.append(self.expansion_to_string(expansion))
+
+            rule_dict[rule_name] = rule_variants
+
+        return {rule: set(rule_dict[rule]) for rule in used_rules}
