@@ -16,7 +16,8 @@ class GrammarGenerator(ABC):
     def create(path: str, variant: str) -> "GrammarGenerator":
         class_map = {
             "minimal": Minimal,
-            "semi-minimal": SemiMinimal
+            "semi-minimal": SemiMinimal,
+            "minimal-abstract": MinimalAbstract,
         }
         return class_map[variant](path)
 
@@ -60,6 +61,9 @@ class GrammarGenerator(ABC):
     
 
 class Minimal(GrammarGenerator):
+    def token_to_string(self, token: Token) -> str:
+        return f'"{token.value}"'
+    
     def _generate(self, tree: ParseTree) -> Dict[str, Set[str]]:
         rule_dict = defaultdict(set)
 
@@ -68,10 +72,10 @@ class Minimal(GrammarGenerator):
                 rule_name = node.data
                 child_values = []
                 for child in node.children:
-                    if isinstance(child, Tree):  
+                    if isinstance(child, Tree):
                         child_values.append(child.data)
                     elif isinstance(child, Token):
-                        child_values.append(f'"{child.value}"')
+                        child_values.append(self.token_to_string(child))
                     else:
                         raise ValueError(f"Unexpected type: {type(child)}")
 
@@ -84,6 +88,13 @@ class Minimal(GrammarGenerator):
 
         traverse(tree)
         return rule_dict
+    
+
+class MinimalAbstract(Minimal):
+    def token_to_string(self, token: Token) -> str:
+        if token.type in ["ESCAPED_STRING", "NUMBER"]:
+            return f'{token.type}'
+        return f'"{token.value}"'
 
 
 class SemiMinimal(GrammarGenerator):
