@@ -85,6 +85,7 @@ class TrainingPipeline:
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+        self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         self.lora_model = get_peft_model(self.model, self.lora_config)
 
     def save_model(self) -> None:
@@ -134,10 +135,10 @@ class TrainingPipeline:
         validation_loss = []
 
         for log in self.trainer.state.log_history:
-            if "loss" in log:  # Training loss
+            if "loss" in log:
                 training_steps.append(log["step"])
                 training_loss.append(log["loss"])
-            if "eval_loss" in log:  # Validation loss
+            if "eval_loss" in log:
                 validation_steps.append(log["step"])
                 validation_loss.append(log["eval_loss"])
 
