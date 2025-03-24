@@ -52,7 +52,7 @@ class Experiment:
             test_set = self.add_grammars(test_set)
         prompts = self.prompting_strategy.construct_prompts(test_set)
         predictions = self.model.prompt(prompts)
-        test_cases = [TestCase(source=case.query, target=case.program, prompt=prompt, prediction=prediction) for case, prompt, prediction in zip(test_set, prompts, predictions)]
+        test_cases = [TestCase(source=case.query, target=case.grammar if self.stage == "induction" else case.program, prompt=prompt, prediction=prediction) for case, prompt, prediction in zip(test_set, prompts, predictions)]
         end_time = time.time()
         time_taken = end_time - start_time
         results = Results(self.experiment_name, test_cases, time_taken)
