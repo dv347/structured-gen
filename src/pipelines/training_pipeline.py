@@ -87,6 +87,7 @@ class TrainingPipeline:
         )
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         self.tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        self.model.resize_token_embeddings(len(self.tokenizer), mean_resizing=not torch.backends.mps.is_available())
         self.lora_model = get_peft_model(self.model, self.lora_config)
 
     def save_model(self) -> None:
