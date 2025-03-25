@@ -20,6 +20,7 @@ from paths import DATA_DIR, MODELS_DIR
 class TrainingPipeline:
     FORMATTERS = {
         "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
+        "baseline_bnf": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### BNF Grammar:"),
         "induction": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}", " ### BNF Grammar:"),
         "structured_reasoning": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### Program:")
     }
@@ -71,7 +72,7 @@ class TrainingPipeline:
     
     def load_dataset(self) -> None:
         self.dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")
-        if self.stage in ["induction", "structured_reasoning"]:
+        if self.stage in ["baseline_bnf", "induction", "structured_reasoning"]:
             loader = GrammarLoader(grammar_source=self.stage_config.grammar_source)
             grammars_train = loader.load_grammars(self.train_path)
             grammars_val = loader.load_grammars(self.val_path)

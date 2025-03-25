@@ -2,6 +2,7 @@ import json
 import os
 from typing import List
 
+from config import ModelConfig
 from paths import DATA_DIR
 
 
@@ -21,12 +22,21 @@ class TestCase:
         self.prediction = prediction
 
 
-def load_from_json(file_path: str) -> List[Case]:
+def load_from_json(file_path: str, grammar_source: str | ModelConfig = None) -> List[Case]:
     file_path = os.path.join(DATA_DIR, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)["data"]
 
-    return [Case(example["query"], example["program"]) for example in data]
+    cases = [Case(example["query"], example["program"]) for example in data]
+
+    if grammar_source:
+        from grammar_loader import GrammarLoader
+        loader = GrammarLoader(grammar_source)
+        grammars = loader.load_grammars(file_path)
+        for case, grammar in zip(cases, grammars):
+            case.grammar = grammar
+
+    return cases
 
 
 def generate_json(stem: str, output_file: str) -> None:

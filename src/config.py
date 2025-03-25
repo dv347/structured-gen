@@ -74,6 +74,7 @@ class StageConfig(ABC):
     def from_dict(data: Dict[str, Any]) -> "StageConfig":
         stage_classes = {
             "baseline": BaselineConfig,
+            "baseline_bnf": BaselineBnfConfig,
             "induction": InductionConfig,
             "structured_reasoning": StructuredReasoningConfig,
             "unified": UnifiedConfig
@@ -85,6 +86,11 @@ class StageConfig(ABC):
 @dataclass
 class BaselineConfig(StageConfig):
     pass
+
+
+@dataclass
+class BaselineBnfConfig(StageConfig):
+    grammar_source: str
 
 
 @dataclass
