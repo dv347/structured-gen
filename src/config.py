@@ -101,6 +101,7 @@ class InductionConfig(StageConfig):
 @dataclass
 class StructuredReasoningConfig(StageConfig):
     grammar_source: str | ModelConfig
+    use_embeddings: bool
 
     def __post_init__(self):
         if isinstance(self.grammar_source, dict):

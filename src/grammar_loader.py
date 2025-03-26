@@ -3,9 +3,11 @@ import os
 from typing import List
 
 import torch
+from tqdm import tqdm
 
 from config import ModelConfig
 from dataset import load_from_json
+from grammar_encoder import GrammarEncoder
 from grammar_generator import GrammarGenerator
 from llm import LargeLanguageModel
 from logger import logger
@@ -38,6 +40,30 @@ class GrammarLoader:
             logger.info(f'Loading grammars from cache for model at {self.model_config.path}.')
             return self.load_from_cache(path)
         return [self.load_grammar(case.program) for case in load_from_json(path)]
+    
+    def _load_encodings(self, grammars: List[str]) -> List[str]:
+        encoder = GrammarEncoder().eval()
+        batch_size = 32
+        embeddings = []
+        with torch.no_grad():
+            for i in tqdm(range(0, len(grammars), batch_size), desc="Encoding grammars"):
+                batch_grammars = grammars[i:i+batch_size]
+                batch_embeddings = encoder(batch_grammars).cpu()
+                batch_embeddings = batch_embeddings.tolist()
+                rounded_embeddings = [
+                    [round(num, 2) for num in embedding]
+                    for embedding in batch_embeddings
+                ]
+                embeddings.extend(rounded_embeddings)
+        return embeddings
+    
+    def load_encodings(self, grammars: List[str]) -> List[str]:
+        output = self._load_encodings(grammars)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.mps.is_available():
+            torch.mps.empty_cache()
+        return output
     
     def generate_cache(self, path: str) -> None:
         model = LargeLanguageModel.from_config(self.model_config)

@@ -22,7 +22,10 @@ class TrainingPipeline:
         "baseline": (lambda e: f"### Query: {e['query']}\n ### Program: {e['program']}", " ### Program:"),
         "baseline_bnf": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### BNF Grammar:"),
         "induction": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}", " ### BNF Grammar:"),
-        "structured_reasoning": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### Program:")
+        "structured_reasoning": {
+            "default": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Program: {e['program']}", " ### Program:"),
+            "with_embedding": (lambda e: f"### Query: {e['query']}\n ### BNF Grammar: {e['grammar']}\n ### Grammar Embedding: {e['embedding']}\n ### Program: {e['program']}", " ### Program:")
+        }
     }
     
     def __init__(
@@ -36,7 +39,11 @@ class TrainingPipeline:
     ):
         self.stage = stage_config.name
         self.stage_config = stage_config
-        self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
+        if self.stage == "structured_reasoning":
+            variant = "with_embedding" if stage_config.use_embeddings else "default"
+            self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage][variant]
+        else:
+            self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
         self.model_path = LargeLanguageModel.resolve_model_path(model_path)
         self.output_dir = os.path.join(MODELS_DIR, f'{output_dir}')
         self.lora_config = LoraConfig(
@@ -78,6 +85,11 @@ class TrainingPipeline:
             grammars_val = loader.load_grammars(self.val_path)
             self.dataset["train"] = self.dataset["train"].add_column("grammar", grammars_train)
             self.dataset["validation"] = self.dataset["validation"].add_column("grammar", grammars_val)
+            if self.stage == "structured_reasoning" and self.stage_config.use_embeddings:
+                embeddings_train = loader.load_encodings(grammars_train)
+                embeddings_val = loader.load_encodings(grammars_val)
+                self.dataset["train"] = self.dataset["train"].add_column("embedding", embeddings_train)
+                self.dataset["validation"] = self.dataset["validation"].add_column("embedding", embeddings_val)
     
     def load_model(self) -> None:
         self.model = AutoModelForCausalLM.from_pretrained(
