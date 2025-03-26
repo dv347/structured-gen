@@ -6,9 +6,14 @@ from transformers import AutoTokenizer, AutoModel
 class GrammarEncoder(nn.Module):
     def __init__(self, model_name="bert-base-uncased", embedding_dim=64): # Bert has a hidden size of 768
         super().__init__()
+        self.device = (
+            torch.device("cuda") if torch.cuda.is_available()
+            else torch.device("mps") if torch.mps.is_available()
+            else torch.device("cpu")
+        )
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.encoder = AutoModel.from_pretrained(model_name)
-        self.projection = nn.Linear(self.encoder.config.hidden_size, embedding_dim)
+        self.encoder = AutoModel.from_pretrained(model_name).to(self.device)
+        self.projection = nn.Linear(self.encoder.config.hidden_size, embedding_dim).to(self.device)
         self.embedding_dim = embedding_dim
 
     def forward(self, grammar_strs):
