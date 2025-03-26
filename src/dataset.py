@@ -7,7 +7,7 @@ from paths import DATA_DIR
 
 
 class Case:
-    def __init__(self, query: str, program: str, grammar: str = None):
+    def __init__(self, query: str, program: str, grammar: str = None, embedding: str = None):
         self.query = query
         program = program.replace("\"\\\"", "\"").replace("\\\"", "")
         self.program = program
@@ -22,7 +22,11 @@ class TestCase:
         self.prediction = prediction
 
 
-def load_from_json(file_path: str, grammar_source: str | ModelConfig = None) -> List[Case]:
+def load_from_json(
+    file_path: str, 
+    grammar_source: str | ModelConfig | None = None, 
+    use_embeddings: bool = False
+) -> List[Case]:
     file_path = os.path.join(DATA_DIR, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)["data"]
@@ -33,8 +37,14 @@ def load_from_json(file_path: str, grammar_source: str | ModelConfig = None) -> 
         from grammar_loader import GrammarLoader
         loader = GrammarLoader(grammar_source)
         grammars = loader.load_grammars(file_path)
-        for case, grammar in zip(cases, grammars):
-            case.grammar = grammar
+        if use_embeddings:
+            embeddings = loader.load_encodings(grammars)
+            for case, grammar, embedding in zip(cases, grammars, embeddings):
+                case.grammar = grammar
+                case.embedding = embedding
+        else:
+            for case, grammar in zip(cases, grammars):
+                case.grammar = grammar
 
     return cases
 

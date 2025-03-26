@@ -81,6 +81,12 @@ class StageConfig(ABC):
         }
         stage = data["name"]
         return stage_classes[stage](**data)
+    
+    def grammar(self) -> str | ModelConfig | None:
+        return getattr(self, "grammar_source", None)
+
+    def embeddings(self) -> bool:
+        return getattr(self, "use_embeddings", False)
 
 
 @dataclass

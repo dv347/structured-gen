@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from config import FewShotConfig, ModelConfig, PromptConfig, ZeroShotConfig
+from config import FewShotConfig, PromptConfig, StageConfig, ZeroShotConfig
 from dataset import Case, load_from_json
 from logger import logger
 
@@ -16,9 +16,14 @@ class PromptingStrategy(ABC):
                         " grammar sufficient for the task. After writing the grammar, then write the program.\n"),
             "induction": ("You are an expert programmer, and you need to write a minimally"
                          " sufficient BNF grammar for the given natural language query.\n"),
-            "structured_reasoning": ("You are an expert programmer, and you need to write a program"
-                                    " for the given natural language query. Use the provided BNF grammar"
-                                    " to structure your solution.\n")
+            "structured_reasoning": {
+                "default": ("You are an expert programmer, and you need to write a program"
+                           " for the given natural language query. Use the provided BNF grammar"
+                           " to structure your solution.\n"),
+                "with_embedding": ("You are an expert programmer, and you need to write a program"
+                                  " for the given natural language query. Use the provided BNF grammar"
+                                  " and embedding to structure your solution.\n")
+            }
         },
         "exemplar": {
             "baseline": lambda example: f"Query: {example.query}\nProgram:\n{example.program}\n\n",
@@ -28,23 +33,26 @@ class PromptingStrategy(ABC):
             "baseline": lambda example: f"Query: {example.query}\nProgram:\n",
             "baseline_bnf": lambda example: f"Query: {example.query}\nBNF Grammar:\n",
             "induction": lambda example: f"Query: {example.query}\nBNF Grammar:\n",
-            "structured_reasoning": lambda example: f"Query: {example.query}\nBNF Grammar: {example.grammar}\nProgram:\n"
+            "structured_reasoning": {
+                "default": lambda example: f"Query: {example.query}\nBNF Grammar: {example.grammar}\nProgram:\n",
+                "with_embedding": lambda example: f"Query: {example.query}\nBNF Grammar: {example.grammar}\nGrammar Embedding: {example.embedding}\nProgram:\n"
+            }
         }
     }
 
     @staticmethod
-    def from_config(config: PromptConfig, stage: str, grammar_source: str | ModelConfig) -> "PromptingStrategy":
+    def from_config(
+        config: PromptConfig, 
+        stage_config: StageConfig
+    ) -> "PromptingStrategy":
         classes = {
             ZeroShotConfig: ZeroShot,
             FewShotConfig: FewShot
         }
         config_dict = vars(config)
         config_dict.pop("strategy")
-        config_dict["stage"] = stage
-        cls = classes[type(config)]
-        if cls == FewShot:
-            config_dict["grammar_source"] = grammar_source
-        return cls(**config_dict)
+        config_dict["stage_config"] = stage_config
+        return classes[type(config)](**config_dict)
     
     @abstractmethod
     def construct_prompt(self, example: Case) -> str:
@@ -55,17 +63,24 @@ class PromptingStrategy(ABC):
     
 
 class ZeroShot(PromptingStrategy):
-    def __init__(self, stage: str):
-        self.stage = stage
+    def __init__(self, stage_config: StageConfig):
+        self.stage = stage_config.name
+        self.instruction = PromptingStrategy.PROMPT_TEMPLATE["instruction"][self.stage]
+        self.prediction = PromptingStrategy.PROMPT_TEMPLATE["prediction"][self.stage]
+        if self.stage == "structured_reasoning":
+            variant = "with_embedding" if stage_config.embeddings() else "default"
+            self.instruction = self.instruction[variant]
+            self.prediction = self.prediction[variant]
 
     def construct_prompt(self, example: Case) -> str:
-        return PromptingStrategy.PROMPT_TEMPLATE["instruction"][self.stage] + PromptingStrategy.PROMPT_TEMPLATE["prediction"][self.stage](example)
+        return self.instruction + self.prediction(example)
 
 
 class FewShot(PromptingStrategy):
-    def __init__(self, stage, k: int, exemplars_path: str, grammar_source: str | ModelConfig):
-        assert stage in ["baseline", "baseline_bnf"], "Few-shot only supports baseline and baseline_bnf stages"
-        self.stage = stage
+    def __init__(self, stage_config: StageConfig, k: int, exemplars_path: str):
+        self.stage = stage_config.name
+        assert self.stage in ["baseline", "baseline_bnf"], "Few-shot only supports baseline and baseline_bnf stages"
+        grammar_source = stage_config.grammar()
         exemplars = load_from_json(exemplars_path, grammar_source)
         assert k <= len(exemplars), "Few-shot k should be less than or equal to the number of exemplars"
         self.exemplars = exemplars[:k]

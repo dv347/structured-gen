@@ -5,7 +5,7 @@ from typing import List
 import torch
 from tqdm import tqdm
 
-from config import ModelConfig
+from config import InductionConfig, ModelConfig
 from dataset import load_from_json
 from grammar_encoder import GrammarEncoder
 from grammar_generator import GrammarGenerator
@@ -62,7 +62,7 @@ class GrammarLoader:
     
     def generate_cache(self, path: str) -> None:
         model = LargeLanguageModel.from_config(self.model_config)
-        prompt_strategy = ZeroShot(stage="induction")
+        prompt_strategy = ZeroShot(stage_config=InductionConfig(name="induction", grammar_source=None))
         cache_data = {"data": []}
         cases = load_from_json(path)
         prompts = prompt_strategy.construct_prompts(cases)
