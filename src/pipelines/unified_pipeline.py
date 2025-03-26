@@ -4,6 +4,7 @@ import torch
 from config import DatasetPaths, InductionConfig, LoraArgs, ModelConfig, StructuredReasoningConfig, TrainingArgs, TrainingConfig, TwoStageConfig, UnifiedConfig
 from logger import logger
 from pipelines import TrainingPipeline
+from utils import clear_gpu_cache
 
 
 class UnifiedPipeline:
@@ -58,10 +59,7 @@ class UnifiedPipeline:
     def run(self) -> None:
         logger.info("Running induction stage.")
         UnifiedPipeline.run_stage(self.stage_one_config)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        elif torch.mps.is_available():
-            torch.mps.empty_cache()
+        clear_gpu_cache()
 
         logger.info("Running structured reasoning stage.")
         UnifiedPipeline.run_stage(self.stage_two_config)

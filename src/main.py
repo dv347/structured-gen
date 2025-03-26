@@ -6,6 +6,7 @@ from config import TwoStageConfig, load_configs
 from experiment import Experiment
 from pipelines import TrainingPipeline
 from pipelines.unified_pipeline import UnifiedPipeline
+from utils import clear_gpu_cache
 
 
 def main():
@@ -23,10 +24,7 @@ def main():
         elif args.mode == "eval":
             Experiment.from_config(config).run()
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        elif torch.mps.is_available():
-            torch.mps.empty_cache()
+        clear_gpu_cache()
 
 
 if __name__ == "__main__":

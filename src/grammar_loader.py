@@ -13,6 +13,7 @@ from llm import LargeLanguageModel
 from logger import logger
 from paths import MODELS_DIR
 from prompt import ZeroShot
+from utils import clear_gpu_cache
 
 
 class GrammarLoader:
@@ -32,10 +33,7 @@ class GrammarLoader:
         if self.is_llm and not self.cache_exists(path):
             logger.info(f'No cache found for model at {self.model_config.path}. Generating cache.')
             self.generate_cache(path)
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            elif torch.mps.is_available():
-                torch.mps.empty_cache()
+            clear_gpu_cache()
         if self.is_llm:
             logger.info(f'Loading grammars from cache for model at {self.model_config.path}.')
             return self.load_from_cache(path)
@@ -59,10 +57,7 @@ class GrammarLoader:
     
     def load_encodings(self, grammars: List[str]) -> List[str]:
         output = self._load_encodings(grammars)
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        elif torch.mps.is_available():
-            torch.mps.empty_cache()
+        clear_gpu_cache()
         return output
     
     def generate_cache(self, path: str) -> None:
