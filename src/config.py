@@ -117,6 +117,7 @@ class StructuredReasoningConfig(StageConfig):
 @dataclass
 class UnifiedConfig(StageConfig):
     grammar_source: dict
+    use_embeddings: bool
 
 
 T = TypeVar("T", bound="LoadableConfig")

@@ -1,6 +1,5 @@
 import os
 
-import torch
 from config import DatasetPaths, InductionConfig, LoraArgs, ModelConfig, StructuredReasoningConfig, TrainingArgs, TrainingConfig, TwoStageConfig, UnifiedConfig
 from logger import logger
 from pipelines import TrainingPipeline
@@ -33,10 +32,8 @@ class UnifiedPipeline:
         )
 
         model_path = os.path.join(induction_dir, "merged_model")
-        if stage_config.grammar_source["use_llm"]:
-            struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source=ModelConfig(path=model_path, batch_size=2, assistant_model=None))
-        else:
-            struct_config = StructuredReasoningConfig("structured_reasoning", grammar_source=initial_grammar)
+        grammar_source = ModelConfig(path=model_path, batch_size=64, assistant_model=None) if stage_config.grammar_source["use_llm"] else initial_grammar
+        struct_config = StructuredReasoningConfig(name="structured_reasoning", grammar_source=grammar_source, use_embeddings=stage_config.use_embeddings)
         self.stage_two_config = TrainingConfig(
             stage_config=struct_config,
             model_path=model_path,
