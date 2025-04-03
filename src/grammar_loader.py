@@ -11,7 +11,7 @@ from grammar_encoder import GrammarEncoder
 from grammar_generator import GrammarGenerator
 from llm import LargeLanguageModel
 from logger import logger
-from paths import MODELS_DIR
+from paths import get_model_dir
 from prompt import ZeroShot
 from utils import clear_gpu_cache
 
@@ -23,7 +23,7 @@ class GrammarLoader:
             self.model_config = grammar_source
         else:
             self.variant = grammar_source
-            self.generator = GrammarGenerator.create(path="lispress_full_3.lark", variant=self.variant)
+            self.generator = GrammarGenerator.create(variant=self.variant)
 
     def load_grammar(self, program: str) -> str:
         assert self.variant != "llm"
@@ -79,7 +79,8 @@ class GrammarLoader:
 
     def cache_dir(self, path) -> str:
         dataset_name = os.path.splitext(os.path.basename(path))[0]
-        return os.path.join(MODELS_DIR, self.model_config.path, "cache", dataset_name)
+        model_dir = get_model_dir(self.model_config.path)
+        return os.path.join(model_dir, "cache", dataset_name)
     
     def cache_exists(self, path: str) -> bool:
         return os.path.exists(os.path.join(self.cache_dir(path), "cache.json"))

@@ -14,7 +14,7 @@ from config import DatasetPaths, LoraArgs, StageConfig, TrainingArgs, TrainingCo
 from grammar_loader import GrammarLoader
 from llm import LargeLanguageModel
 from logger import logger
-from paths import DATA_DIR, MODELS_DIR
+from paths import get_dataset_dir, get_model_dir
 
 
 class TrainingPipeline:
@@ -45,7 +45,7 @@ class TrainingPipeline:
         else:
             self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
         self.model_path = LargeLanguageModel.resolve_model_path(model_path)
-        self.output_dir = os.path.join(MODELS_DIR, f'{output_dir}')
+        self.output_dir = get_model_dir(output_dir)
         self.lora_config = LoraConfig(
             r=lora_args.rank_dimension,
             lora_alpha=lora_args.lora_alpha,
@@ -65,8 +65,9 @@ class TrainingPipeline:
             save_steps=training_args.save_steps,
             eval_steps=training_args.eval_steps
         )
-        self.train_path = os.path.join(DATA_DIR, dataset_paths.train_path)
-        self.val_path = os.path.join(DATA_DIR, dataset_paths.val_path)
+        dataset_dir = get_dataset_dir()
+        self.train_path = os.path.join(dataset_dir, dataset_paths.train_path)
+        self.val_path = os.path.join(dataset_dir, dataset_paths.val_path)
 
         self.dataset = None
         self.model = None

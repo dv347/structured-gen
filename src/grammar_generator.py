@@ -4,22 +4,28 @@ import os
 from typing import Dict, List, Set
 
 from lark import Lark, ParseTree, Token, Tree
-from paths import GRAMMARS_DIR
+
+from paths import get_dataset_name, get_grammar_path
 
 
 class GrammarGenerator(ABC):
-    def __init__(self, path: str):
-        grammar_file = os.path.join(GRAMMARS_DIR, path)
-        self.parser = Lark.open(grammar_file, start="call", parser="earley")
+    def __init__(self):
+        grammar_path = get_grammar_path()
+        start = {
+            "smcalflow": "call",
+            "geoquery": "query"
+        }
+        dataset_name = get_dataset_name()
+        self.parser = Lark.open(grammar_path, start=start[dataset_name], parser="earley")
 
     @staticmethod
-    def create(path: str, variant: str) -> "GrammarGenerator":
+    def create(variant: str) -> "GrammarGenerator":
         class_map = {
             "minimal": Minimal,
             "semi-minimal": SemiMinimal,
             "minimal-abstract": MinimalAbstract,
         }
-        return class_map[variant](path)
+        return class_map[variant]()
 
     @staticmethod
     def merge_quoted_strings(lst: List[str]) -> List[str]:

@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, L
 import torch
 
 from config import ModelConfig
-from paths import MODELS_DIR
+from paths import get_model_dir
 
 
 class StopOnDoubleNewline(StoppingCriteria):
@@ -81,7 +81,7 @@ class LargeLanguageModel:
             model_info(path)
             return path
         except Exception:
-            return os.path.join(MODELS_DIR, path)
+            return get_model_dir(path)
 
     @classmethod
     def from_config(cls, config: ModelConfig) -> "LargeLanguageModel":

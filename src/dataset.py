@@ -3,7 +3,7 @@ import os
 from typing import List
 
 from config import ModelConfig
-from paths import DATA_DIR
+from paths import get_dataset_dir, set_dataset
 
 
 class Case:
@@ -27,7 +27,8 @@ def load_from_json(
     grammar_source: str | ModelConfig | None = None, 
     use_embeddings: bool = False
 ) -> List[Case]:
-    file_path = os.path.join(DATA_DIR, file_path)
+    dataset_dir = get_dataset_dir()
+    file_path = os.path.join(dataset_dir, file_path)
     with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)["data"]
 
@@ -50,9 +51,10 @@ def load_from_json(
 
 
 def generate_json(stem: str, output_file: str) -> None:
-    source_path = os.path.join(DATA_DIR, stem + ".src")
-    target_path = os.path.join(DATA_DIR, stem + ".tgt")
-    output_file = os.path.join(DATA_DIR, output_file)
+    dataset_dir = get_dataset_dir()
+    source_path = os.path.join(dataset_dir, stem + ".src")
+    target_path = os.path.join(dataset_dir, stem + ".tgt")
+    output_file = os.path.join(dataset_dir, output_file)
 
     data = []
     with open(source_path, "r", encoding="utf-8") as src, open(target_path, "r", encoding="utf-8") as tgt:
@@ -61,6 +63,3 @@ def generate_json(stem: str, output_file: str) -> None:
 
     with open(output_file, "w", encoding="utf-8") as out:
         json.dump({"data": data}, out, indent=4)
-
-
-# generate_json("test", "test.json")
