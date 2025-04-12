@@ -1,10 +1,12 @@
 import json
 import os
+import random
 import time
 from typing import Any, Dict
 
 from datasets import load_dataset
 import matplotlib.pyplot as plt
+import numpy as np
 from peft import get_peft_model, LoraConfig
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, EvalPrediction
@@ -35,7 +37,8 @@ class TrainingPipeline:
         dataset_paths: DatasetPaths,
         output_dir: str,
         lora_args: LoraArgs,
-        training_args: TrainingArgs
+        training_args: TrainingArgs,
+        seed: int = 42
     ):
         self.stage = stage_config.name
         self.stage_config = stage_config
@@ -46,6 +49,7 @@ class TrainingPipeline:
             self.formatting_function, self.response_template = TrainingPipeline.FORMATTERS[self.stage]
         self.model_path = LargeLanguageModel.resolve_model_path(model_path)
         self.output_dir = get_model_dir(output_dir)
+        self.set_seed(seed)
         self.lora_config = LoraConfig(
             r=lora_args.rank_dimension,
             lora_alpha=lora_args.lora_alpha,
@@ -77,6 +81,18 @@ class TrainingPipeline:
     @classmethod
     def from_config(cls, config: TrainingConfig) -> "TrainingPipeline":
         return cls(**vars(config))
+    
+    def set_seed(self, seed) -> None:
+        logger.info(f"Setting seed to {seed}.")
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+        os.environ["PYTHONHASHSEED"] = str(seed)
+
+        # Optional — only if you need 100% repeatability
+        # torch.backends.cudnn.deterministic = True
+        # torch.backends.cudnn.benchmark = False
     
     def load_dataset(self) -> None:
         self.dataset = load_dataset("json", data_files={"train": self.train_path, "validation": self.val_path}, field="data")

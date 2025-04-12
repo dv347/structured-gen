@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
+import copy
 from dataclasses import dataclass
 import json
 import os
 from typing import Any, Dict, List, Type, TypeVar
 
 from paths import EVAL_CONFIGS_DIR, TRAIN_CONFIGS_DIR
+
+DEFAULT_SEEDS = [42, 123, 2025, 999, 7]
 
 
 @dataclass
@@ -147,6 +150,7 @@ class TrainingConfig(LoadableConfig):
     dataset_paths: DatasetPaths
     lora_args: LoraArgs
     training_args: TrainingArgs
+    seed: int = 42
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TrainingConfig":
@@ -161,7 +165,8 @@ class TrainingConfig(LoadableConfig):
             output_dir=data["output_dir"],
             dataset_paths=dataset_paths,
             lora_args=lora_args,
-            training_args=training_args
+            training_args=training_args,
+            seed=data.get("seed", 42), # Use default if not provided
         )
 
 
@@ -176,6 +181,7 @@ class TwoStageConfig(LoadableConfig):
     stage_two_lora: LoraArgs
     stage_one_training: TrainingArgs
     stage_two_training: TrainingArgs
+    seed: int = 42
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TwoStageConfig":
@@ -196,7 +202,8 @@ class TwoStageConfig(LoadableConfig):
             stage_one_lora=stage_one_lora,
             stage_two_lora=stage_two_lora,
             stage_one_training=stage_one_training,
-            stage_two_training=stage_two_training
+            stage_two_training=stage_two_training,
+            seed=data.get("seed", 42), # Use default if not provided
         )
 
 
@@ -223,7 +230,7 @@ class ExperimentConfig(LoadableConfig):
         )
     
 
-def load_configs(mode: str, path: str) -> List[LoadableConfig]:
+def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]:
     assert mode in ["train", "eval"], f"Invalid mode: {mode}"
 
     path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
@@ -240,9 +247,20 @@ def load_configs(mode: str, path: str) -> List[LoadableConfig]:
         with open(config_path, "r", encoding="utf-8") as file:
             data = json.load(file)
         if mode == "train":
+            seeds = DEFAULT_SEEDS if multi_seed else [data["seed"]]
             stage_type = data["stage"]["name"]
             config_class = TwoStageConfig if stage_type == "unified" else TrainingConfig
-            configs.append(config_class.from_dict(data))
+            for seed in seeds:
+                data_copy = copy.deepcopy(data)
+                data_copy["seed"] = seed
+                data_copy["output_dir"] = f"{data['output_dir']}_{seed}" 
+                configs.append(config_class.from_dict(data_copy))
         elif mode == "eval":
-            configs.append(ExperimentConfig.from_dict(data))
+            experiment_names = [f"{data['experiment_name']}_{seed}" for seed in DEFAULT_SEEDS] if multi_seed else [data["experiment_name"]]
+            model_paths = [f"{data['model']['path']}_{seed}" for seed in DEFAULT_SEEDS] if multi_seed else [data["model"]["path"]]
+            for experiment_name, model_path in zip(experiment_names, model_paths):
+                data_copy = copy.deepcopy(data)
+                data_copy["experiment_name"] = experiment_name
+                data_copy["model"]["path"] = model_path
+                configs.append(ExperimentConfig.from_dict(data_copy))
     return configs

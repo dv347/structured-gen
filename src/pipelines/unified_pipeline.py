@@ -17,7 +17,8 @@ class UnifiedPipeline:
         stage_one_lora: LoraArgs,
         stage_two_lora: LoraArgs,
         stage_one_training: TrainingArgs,
-        stage_two_training: TrainingArgs
+        stage_two_training: TrainingArgs,
+        seed: int = 42
     ):
         initial_grammar = stage_config.grammar_source["variant"]
         induction_config = InductionConfig("induction", grammar_source=initial_grammar)
@@ -28,7 +29,8 @@ class UnifiedPipeline:
             output_dir=induction_dir,
             dataset_paths=stage_one_dataset,
             lora_args=stage_one_lora,
-            training_args=stage_one_training
+            training_args=stage_one_training,
+            seed=seed
         )
 
         model_path = os.path.join(induction_dir, "merged_model")
@@ -40,7 +42,8 @@ class UnifiedPipeline:
             output_dir=output_dir,
             dataset_paths=stage_two_dataset,
             lora_args=stage_two_lora,
-            training_args=stage_two_training
+            training_args=stage_two_training,
+            seed=seed
         )
 
     @staticmethod

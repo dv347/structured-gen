@@ -40,4 +40,4 @@ def get_grammar_path() -> str:
 
 
 def get_model_dir(path: str) -> str:
-    return os.path.join(MODELS_DIR, get_dataset_name(), path)
+    return os.path.join(MODELS_DIR, get_dataset_name(), path, "merged_model")
