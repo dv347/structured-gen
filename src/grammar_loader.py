@@ -11,7 +11,7 @@ from grammar_encoder import GrammarEncoder
 from grammar_generator import GrammarGenerator
 from llm import LargeLanguageModel
 from logger import logger
-from paths import get_model_dir
+from paths import get_merged_model_dir
 from prompt import ZeroShot
 from utils import clear_gpu_cache
 
@@ -79,7 +79,7 @@ class GrammarLoader:
 
     def cache_dir(self, path) -> str:
         dataset_name = os.path.splitext(os.path.basename(path))[0]
-        model_dir = get_model_dir(self.model_config.path)
+        model_dir = get_merged_model_dir(self.model_config.path)
         return os.path.join(model_dir, "cache", dataset_name)
     
     def cache_exists(self, path: str) -> bool:
