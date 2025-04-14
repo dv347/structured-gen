@@ -240,7 +240,7 @@ def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]
                 if path:
                     input["stage"]["grammar_source"]["path"] = f"{path}_{seed}"
 
-        path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
+    path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
 
     if os.path.isdir(path):
         config_paths = [os.path.join(path, f) for f in sorted(os.listdir(path)) if f.endswith(".json")]
