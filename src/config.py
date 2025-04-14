@@ -60,6 +60,7 @@ class LoraArgs:
 @dataclass
 class TrainingArgs:
     max_steps: int
+    num_train_epochs: int
     per_device_train_batch_size: int
     bf16: bool
     learning_rate: float
@@ -250,13 +251,12 @@ def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]
     else:
         raise FileNotFoundError(f"Invalid path: {path} does not exist.")
     
-    seeds = DEFAULT_SEEDS if multi_seed else [data["seed"]]
     configs = []
     for config_path in config_paths:
         with open(config_path, "r", encoding="utf-8") as file:
             data = json.load(file)
+        seeds = DEFAULT_SEEDS if multi_seed else [data.get("seed", 42)]
         if mode == "train":
-            seeds = DEFAULT_SEEDS if multi_seed else [data["seed"]]
             stage_type = data["stage"]["name"]
             config_class = TwoStageConfig if stage_type == "unified" else TrainingConfig
             for seed in seeds:

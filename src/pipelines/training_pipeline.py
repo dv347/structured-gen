@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import json
 import os
 import random
@@ -60,14 +61,7 @@ class TrainingPipeline:
         )
         self.training_args = SFTConfig(
             output_dir=self.output_dir,
-            max_steps=training_args.max_steps,
-            per_device_train_batch_size=training_args.per_device_train_batch_size,
-            bf16=training_args.bf16,
-            learning_rate=training_args.learning_rate,
-            logging_steps=training_args.logging_steps,
-            eval_strategy=training_args.eval_strategy,
-            save_steps=training_args.save_steps,
-            eval_steps=training_args.eval_steps
+            **asdict(training_args)
         )
         dataset_dir = get_dataset_dir()
         self.train_path = os.path.join(dataset_dir, dataset_paths.train_path)
