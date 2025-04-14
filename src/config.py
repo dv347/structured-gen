@@ -235,8 +235,9 @@ def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]
 
     def process_grammar_source(input: dict, seed: int) -> None:
         if multi_seed:
-            if input["stage"].get("grammar_source", None):
-                path = input["stage"]["grammar_source"].get("path", None)
+            source = input["stage"].get("grammar_source", None)
+            if type(source) == dict:
+                path = source.get("path", None)
                 if path:
                     input["stage"]["grammar_source"]["path"] = f"{path}_{seed}"
 
