@@ -228,12 +228,19 @@ class ExperimentConfig(LoadableConfig):
             prompt_config=prompt_config,
             test_set_path=data["test_set_path"]
         )
-    
+
 
 def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]:
     assert mode in ["train", "eval"], f"Invalid mode: {mode}"
 
-    path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
+    def process_grammar_source(input: dict, seed: int) -> None:
+        if multi_seed:
+            if input["stage"].get("grammar_source", None):
+                path = input["stage"]["grammar_source"].get("path", None)
+                if path:
+                    input["stage"]["grammar_source"]["path"] = f"{path}_{seed}"
+
+        path = os.path.join(TRAIN_CONFIGS_DIR, path) if mode == "train" else os.path.join(EVAL_CONFIGS_DIR, path)
 
     if os.path.isdir(path):
         config_paths = [os.path.join(path, f) for f in sorted(os.listdir(path)) if f.endswith(".json")]
@@ -241,7 +248,8 @@ def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]
         config_paths = [path]
     else:
         raise FileNotFoundError(f"Invalid path: {path} does not exist.")
-
+    
+    seeds = DEFAULT_SEEDS if multi_seed else [data["seed"]]
     configs = []
     for config_path in config_paths:
         with open(config_path, "r", encoding="utf-8") as file:
@@ -253,14 +261,16 @@ def load_configs(mode: str, path: str, multi_seed: bool) -> List[LoadableConfig]
             for seed in seeds:
                 data_copy = copy.deepcopy(data)
                 data_copy["seed"] = seed
-                data_copy["output_dir"] = f"{data['output_dir']}_{seed}" 
+                data_copy["output_dir"] = f"{data['output_dir']}_{seed}"
+                process_grammar_source(data_copy, seed)
                 configs.append(config_class.from_dict(data_copy))
         elif mode == "eval":
             experiment_names = [f"{data['experiment_name']}_{seed}" for seed in DEFAULT_SEEDS] if multi_seed else [data["experiment_name"]]
             model_paths = [f"{data['model']['path']}_{seed}" for seed in DEFAULT_SEEDS] if multi_seed else [data["model"]["path"]]
-            for experiment_name, model_path in zip(experiment_names, model_paths):
+            for experiment_name, model_path, seed in zip(experiment_names, model_paths, seeds):
                 data_copy = copy.deepcopy(data)
                 data_copy["experiment_name"] = experiment_name
                 data_copy["model"]["path"] = model_path
+                process_grammar_source(data_copy, seed)
                 configs.append(ExperimentConfig.from_dict(data_copy))
     return configs
