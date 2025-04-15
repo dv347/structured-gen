@@ -3,7 +3,7 @@
         "name": "baseline"
     },
     "model_path": "google/codegemma-2b",
-    "output_dir": "sft_output",
+    "output_dir": "baseline/default",
     "dataset": {
         "train_path": "train.json",
         "val_path": "valid_8.json"
