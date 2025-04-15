@@ -65,8 +65,11 @@ class TrainingArgs:
     bf16: bool
     learning_rate: float
     logging_steps: int
-    eval_strategy: str
+    logging_first_step: bool
+    save_strategy: str
     save_steps: int
+    eval_strategy: str
+    eval_delay: int
     eval_steps: int
 
 

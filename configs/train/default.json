@@ -21,9 +21,12 @@
         "per_device_train_batch_size": 8,
         "bf16": true,
         "learning_rate": 5e-5,
-        "logging_steps": 10,
+        "logging_steps": 50,
+        "logging_first_step": true,
+        "save_strategy": "epoch",
+        "save_steps": 500,
         "eval_strategy": "steps",
-        "save_steps": 100,
-        "eval_steps": 200
+        "eval_delay": 0,
+        "eval_steps": 50
     }
 }
