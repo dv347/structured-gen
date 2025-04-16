@@ -63,6 +63,8 @@ class TrainingArgs:
     num_train_epochs: int
     per_device_train_batch_size: int
     bf16: bool
+    gradient_accumulation_steps: int
+    gradient_checkpointing: bool
     learning_rate: float
     logging_steps: int
     logging_first_step: bool
