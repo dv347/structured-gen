@@ -4,6 +4,7 @@ import torch
 
 from config import TwoStageConfig, load_configs
 from experiment import Experiment
+from logger import logger
 from paths import set_dataset
 from pipelines import TrainingPipeline
 from pipelines.unified_pipeline import UnifiedPipeline
@@ -17,6 +18,7 @@ def main():
     parser.add_argument("--dataset", type=str, required=True, help="Name of the dataset (e.g., 'SMCalFLow').")
     parser.add_argument("--multi_seed", action="store_true", help="If set, run 5 seeds instead of one.")
     args = parser.parse_args()
+    logger.info(f'Running in {args.mode} mode with args: {args}')
 
     assert torch.cuda.is_available() or torch.mps.is_available(), "CUDA or MPS must be available."
 
@@ -27,12 +29,14 @@ def main():
         path=args.config,
         multi_seed=args.multi_seed
     )
+    logger.info(f"Loaded {len(configs)} config(s).")
     for config in configs:
         if args.mode == "train":
             UnifiedPipeline.from_config(config).run() if isinstance(config, TwoStageConfig) else TrainingPipeline.from_config(config).run()
         elif args.mode == "eval":
             Experiment.from_config(config).run()
 
+        logger.info("Run completed. Clearing GPU cache.")
         clear_gpu_cache()
 
 
