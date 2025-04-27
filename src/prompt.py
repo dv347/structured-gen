@@ -26,16 +26,16 @@ class PromptingStrategy(ABC):
             }
         },
         "exemplar": {
-            "baseline": lambda example: f"Query: {example.query}\nProgram:\n{example.program}\n\n",
-            "baseline_bnf": lambda example: f"Query: {example.query}\nBNF Grammar:\n{example.grammar}\nProgram:\n{example.program}\n\n",
+            "baseline": lambda example: f"### Query: {example.query}\n### Program:\n{example.program}\n\n",
+            "baseline_bnf": lambda example: f"### Query: {example.query}\n### BNF Grammar:\n{example.grammar}\n### Program:\n{example.program}\n\n",
         },
         "prediction": {
-            "baseline": lambda example: f"Query: {example.query}\nProgram:\n",
-            "baseline_bnf": lambda example: f"Query: {example.query}\nBNF Grammar:\n",
-            "induction": lambda example: f"Query: {example.query}\nBNF Grammar:\n",
+            "baseline": lambda example: f"### Query: {example.query}\n ### Program: ",
+            "baseline_bnf": lambda example: f"### Query: {example.query}\n ### BNF Grammar: ",
+            "induction": lambda example: f"### Query: {example.query}\n ### BNF Grammar: ",
             "structured_reasoning": {
-                "default": lambda example: f"Query: {example.query}\nBNF Grammar: {example.grammar}\nProgram:\n",
-                "with_embedding": lambda example: f"Query: {example.query}\nBNF Grammar: {example.grammar}\nGrammar Embedding: {example.embedding}\nProgram:\n"
+                "default": lambda example: f"### Query: {example.query}\n ### BNF Grammar: {example.grammar}\n ### Program: ",
+                "with_embedding": lambda example: f"### Query: {example.query}\n ### BNF Grammar: {example.grammar}\n ### Grammar Embedding: {example.embedding}\n ### Program: "
             }
         }
     }
@@ -63,8 +63,9 @@ class PromptingStrategy(ABC):
     
 
 class ZeroShot(PromptingStrategy):
-    def __init__(self, stage_config: StageConfig):
+    def __init__(self, stage_config: StageConfig, use_instruction: bool = False):
         self.stage = stage_config.name
+        self.use_instruction = use_instruction
         self.instruction = PromptingStrategy.PROMPT_TEMPLATE["instruction"][self.stage]
         self.prediction = PromptingStrategy.PROMPT_TEMPLATE["prediction"][self.stage]
         if self.stage == "structured_reasoning":
@@ -73,7 +74,7 @@ class ZeroShot(PromptingStrategy):
             self.prediction = self.prediction[variant]
 
     def construct_prompt(self, example: Case) -> str:
-        return self.instruction + self.prediction(example)
+        return self.instruction + self.prediction(example) if self.use_instruction else self.prediction(example)
 
 
 class FewShot(PromptingStrategy):
