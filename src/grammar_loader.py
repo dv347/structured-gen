@@ -62,7 +62,7 @@ class GrammarLoader:
     
     def generate_cache(self, path: str) -> None:
         model = LargeLanguageModel.from_config(self.model_config)
-        prompt_strategy = ZeroShot(stage_config=InductionConfig(name="induction", grammar_source=None))
+        prompt_strategy = ZeroShot(stage_config=InductionConfig(name="induction", grammar_source=None), use_instruction=True)
         cache_data = {"data": []}
         cases = load_from_json(path)
         prompts = prompt_strategy.construct_prompts(cases)
