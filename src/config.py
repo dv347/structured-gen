@@ -33,7 +33,7 @@ class PromptConfig(ABC):
 
 @dataclass
 class ZeroShotConfig(PromptConfig):
-    use_instruction: bool = False
+    use_instruction: bool = True
 
 
 @dataclass
