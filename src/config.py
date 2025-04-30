@@ -220,19 +220,22 @@ class ExperimentConfig(LoadableConfig):
     model_config: ModelConfig
     prompt_config: PromptConfig
     test_set_path: str
+    cleanup_weights: bool = True
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ExperimentConfig":
         stage_config = StageConfig.from_dict(data["stage"])
         model_config = ModelConfig(**data["model"])
         prompt_config = PromptConfig.from_dict(data["prompt_strategy"])
+        cleanup_weights = data.get("cleanup_weights", True)
 
         return cls(
             experiment_name=data["experiment_name"],
             stage_config=stage_config,
             model_config=model_config,
             prompt_config=prompt_config,
-            test_set_path=data["test_set_path"]
+            test_set_path=data["test_set_path"],
+            cleanup_weights=cleanup_weights
         )
 
 

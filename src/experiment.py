@@ -1,9 +1,11 @@
 import re
 import time
 
-from config import ExperimentConfig, StageConfig
+from cleanup_weights import cleanup_model_dir
+from config import ExperimentConfig, ModelConfig, StageConfig
 from dataset import Case, TestCase, load_from_json
 from llm import LargeLanguageModel
+from paths import get_model_dir
 from prompt import PromptingStrategy
 from results import Results
 
@@ -15,7 +17,8 @@ class Experiment:
         stage_config: StageConfig,
         model: LargeLanguageModel,
         prompting_strategy: PromptingStrategy,
-        test_set_path: str
+        test_set_path: str,
+        cleanup_weights: bool = True # Default is True to avoid hitting storage limits when running multiple experiments, set to False to keep weights
     ):
         self.experiment_name = experiment_name
         self.stage = stage_config.name
@@ -24,6 +27,7 @@ class Experiment:
         self.model = model
         self.prompting_strategy = prompting_strategy
         self.test_set_path = test_set_path
+        self.cleanup_weights = cleanup_weights
 
     @classmethod
     def from_config(cls, config: ExperimentConfig) -> "Experiment":
@@ -37,7 +41,8 @@ class Experiment:
             stage_config=config.stage_config,
             model=model,
             prompting_strategy=prompting_strategy,
-            test_set_path=config.test_set_path
+            test_set_path=config.test_set_path,
+            cleanup_weights=config.cleanup_weights
         )
     
     def create_test_case(self, case: Case, prompt: str, prediction: str) -> TestCase:
@@ -47,6 +52,11 @@ class Experiment:
             if len(parts) > 1:
                 prediction = parts[1].strip()
         return TestCase(source=case.query, target=target, prompt=prompt, prediction=prediction)
+    
+    def cleanup(self) -> None:
+        cleanup_model_dir(get_model_dir(self.model.path))
+        if type(self.grammar_source) == ModelConfig:
+            cleanup_model_dir(get_model_dir(self.grammar_source.path))
     
     def run(self) -> None:
         start_time = time.time()
@@ -62,3 +72,5 @@ class Experiment:
         time_taken = end_time - start_time
         results = Results(self.experiment_name, test_cases, time_taken)
         results.save()
+        if self.cleanup_weights:
+            self.cleanup()

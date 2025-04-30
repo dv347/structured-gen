@@ -11,7 +11,7 @@ def safe_listdir(path):
     return os.listdir(path) if os.path.isdir(path) else []
 
 
-def cleanup_model_dir():
+def cleanup_models_dir():
     for dataset_dir in safe_listdir(MODELS_DIR):
         dataset_dir_path = os.path.join(MODELS_DIR, dataset_dir)
 
@@ -33,5 +33,20 @@ def cleanup_model_dir():
                         os.remove(item_path)
 
 
+
+def cleanup_model_dir(model_dir: str):
+    if os.path.isdir(model_dir):
+        for item in safe_listdir(model_dir):
+            item_path = os.path.join(model_dir, item)
+            if os.path.isdir(item_path):
+                if item.startswith("checkpoint") or item == "merged_model":
+                    logger.info(f"Deleting directory: {item_path}")
+                    shutil.rmtree(item_path)
+
+            elif os.path.isfile(item_path) and os.path.basename(item_path) not in PRESERVE_FILES:
+                logger.info(f"Deleting file: {item_path}")
+                os.remove(item_path)
+
+
 if __name__ == "__main__":
-    cleanup_model_dir()
+    cleanup_models_dir()

@@ -52,6 +52,7 @@ class LargeLanguageModel:
         assert not (batch_size > 1 and assistant_model), "Batch inference does not support assistant models"
         torch.set_float32_matmul_precision("high")
         self.batch_size = batch_size
+        self.path = path
         resolved_path = LargeLanguageModel.resolve_model_path(path)
         self.tokenizer = AutoTokenizer.from_pretrained(resolved_path, use_fast=True)
         self.tokenizer.pad_token = self.tokenizer.eos_token
