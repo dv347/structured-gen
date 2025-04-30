@@ -206,6 +206,12 @@ class TrainingPipeline:
 
         logger.info(f"Loading model {self.model_path}.")
         self.load_model()
+
+        # Strip leading/trailing spaces from the response template for LLaMA-based models.
+        # Llama-2 and Code Llama tokenizers handle newlines and whitespace inconsistently,
+        # which can break response template matching unless the prefix is stripped.
+        if "Llama-2" in self.model_path or "CodeLlama" in self.model_path:
+            self.response_template = self.response_template.strip()
         
         collator = DataCollatorForCompletionOnlyLM(self.response_template, tokenizer=self.tokenizer)
 
