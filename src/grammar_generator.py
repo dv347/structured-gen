@@ -12,6 +12,7 @@ class GrammarGenerator(ABC):
     def __init__(self):
         grammar_path = get_grammar_path()
         start = {
+            "blocks": "list_value",
             "smcalflow": "call",
             "geoquery": "query"
         }
