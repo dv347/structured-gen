@@ -15,6 +15,7 @@ class ModelConfig:
     path: str
     batch_size: int
     assistant_model: str | None = None # Batch inference does not support assistant models
+    max_new_tokens: int = 225
 
 
 @dataclass

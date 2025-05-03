@@ -47,7 +47,8 @@ class LargeLanguageModel:
         self, 
         path: str,
         batch_size: int,
-        assistant_model: str | None
+        assistant_model: str | None,
+        max_new_tokens: int
     ):
         assert not (batch_size > 1 and assistant_model), "Batch inference does not support assistant models"
         torch.set_float32_matmul_precision("high")
@@ -63,7 +64,7 @@ class LargeLanguageModel:
             device_map='auto'
         )
         self.generate_kwargs = {
-            "max_new_tokens": 500,
+            "max_new_tokens": max_new_tokens,
             "pad_token_id": self.tokenizer.eos_token_id
         }
         if self.batch_size > 1:
