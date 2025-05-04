@@ -63,7 +63,7 @@ class GrammarLoader:
     def generate_cache(self, path: str) -> None:
         self.model_config.max_new_tokens = 275 # Concise grammars perform better. Currently does not allow user override
         model = LargeLanguageModel.from_config(self.model_config)
-        prompt_strategy = ZeroShot(stage_config=InductionConfig(name="induction", grammar_source=None), use_instruction=True)
+        prompt_strategy = ZeroShot(stage_config=InductionConfig(name="induction", grammar_source=None), use_instruction=False)
         cache_data = {"data": []}
         cases = load_from_json(path)
         prompts = prompt_strategy.construct_prompts(cases)
