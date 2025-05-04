@@ -95,6 +95,7 @@ class LargeLanguageModel:
         response = response.split("<|file_separator|>", 1)[0]
         response = response.split("\n\n", 1)[0]
         response = response.split("\n", 1)[0]
+        response = response.replace("<code>", "").replace("</code>", "")
         response = response.strip()
         return response
 
