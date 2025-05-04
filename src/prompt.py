@@ -74,7 +74,7 @@ class ZeroShot(PromptingStrategy):
             self.prediction = self.prediction[variant]
 
     def construct_prompt(self, example: Case) -> str:
-        return self.instruction + self.prediction(example) if self.use_instruction else self.prediction(example)
+        return self.instruction + self.prediction(example).replace(" ### ", "").replace("### ", "") if self.use_instruction else self.prediction(example)
 
 
 class FewShot(PromptingStrategy):
